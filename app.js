@@ -25,7 +25,7 @@
     // };
 
     const DEFAULT_THRESHOLDS = {
-        tempWarning: 30,
+        tempWarning: 35,
         tempDanger: 39,
 
         humidLowWarning: 40,
@@ -319,7 +319,7 @@
         };
 
         if (temp >= t.tempDanger) addIssue("danger", "temp", "high", `Temperature is dangerously high at ${fmt(temp)}°C.`, "Temperature is dangerously high.");
-        else if (temp >= t.tempWarning) addIssue("warning", "temp", "high", `Temperature is getting high at ${fmt(temp)}°C.`, "Temperature is getting high.");
+        else if (temp > t.tempWarning) addIssue("warning", "temp", "high", `Temperature is getting high at ${fmt(temp)}°C.`, "Temperature is getting high.");
 
         if (humid >= t.humidHighDanger) addIssue("danger", "humid", "high", `Humidity is dangerously high at ${fmt(humid)}%.`, "Humidity is dangerously high.");
         else if (humid <= t.humidLowDanger) addIssue("danger", "humid", "low", `Humidity is dangerously low at ${fmt(humid)}%.`, "Humidity is dangerously low.");
@@ -568,7 +568,7 @@
 
         if (type === "temp") {
             if (v >= t.tempDanger) return { status: "danger", label: "Danger" };
-            if (v >= t.tempWarning) return { status: "warning", label: "Warning" };
+            if (v > t.tempWarning) return { status: "warning", label: "Warning" };
             return { status: "safe", label: "Safe" };
         }
         if (type === "humid") {
