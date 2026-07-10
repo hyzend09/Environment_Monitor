@@ -1,0 +1,19 @@
+{
+    "name": "TerraPulse Environmental Lab",
+    "short_name": "TerraPulse",
+    "description": "Realtime IoT environmental dashboard with warning and danger notifications.",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#f8f1df",
+    "theme_color": "#f3e8cf",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}

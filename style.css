@@ -1,0 +1,3400 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --font-main: 'Manrope', Arial, sans-serif;
+    --font-display: 'Space Grotesk', Arial, sans-serif;
+    --radius-xl: 34px;
+    --radius-lg: 24px;
+    --radius-md: 18px;
+    --shadow-soft: 0 22px 60px rgba(68, 53, 31, 0.16);
+    --shadow-lift: 0 32px 70px rgba(68, 53, 31, 0.22);
+    --safe: #2f9e6d;
+    --warning: #d8941d;
+    --danger: #df5b4f;
+}
+
+body.theme-terra {
+    --bg: #f8f1df;
+    --bg-2: #efe2c7;
+    --surface: rgba(255, 250, 239, 0.72);
+    --surface-solid: #fffaf0;
+    --surface-strong: rgba(255, 255, 255, 0.88);
+    --text: #1f261f;
+    --muted: #81705a;
+    --soft: #5e5444;
+    --line: rgba(65, 48, 28, 0.13);
+    --accent: #0f8b72;
+    --accent-2: #df7a46;
+    --accent-3: #e0b542;
+    --deep: #14332b;
+    --rail: rgba(26, 50, 41, 0.92);
+    --rail-text: #fff8e6;
+    --chart-grid: rgba(40, 50, 42, 0.1);
+}
+
+body.theme-sakura {
+    --bg: #fff2f1;
+    --bg-2: #f8deda;
+    --surface: rgba(255, 250, 251, 0.74);
+    --surface-solid: #fffafa;
+    --surface-strong: rgba(255, 255, 255, 0.9);
+    --text: #2c2027;
+    --muted: #8b6470;
+    --soft: #644852;
+    --line: rgba(89, 50, 64, 0.13);
+    --accent: #b85d74;
+    --accent-2: #df8f53;
+    --accent-3: #6ca78e;
+    --deep: #462632;
+    --rail: rgba(74, 39, 51, 0.93);
+    --rail-text: #fff2f1;
+    --chart-grid: rgba(74, 39, 51, 0.1);
+}
+
+body.theme-graphite {
+    --bg: #111410;
+    --bg-2: #1e261b;
+    --surface: rgba(31, 37, 29, 0.78);
+    --surface-solid: #22291f;
+    --surface-strong: rgba(39, 47, 35, 0.94);
+    --text: #f3f4dc;
+    --muted: #aeb79a;
+    --soft: #d7dec4;
+    --line: rgba(235, 244, 208, 0.12);
+    --accent: #c7f464;
+    --accent-2: #ffb168;
+    --accent-3: #78dcca;
+    --deep: #eff8c8;
+    --rail: rgba(8, 11, 8, 0.92);
+    --rail-text: #f6ffd9;
+    --chart-grid: rgba(235, 244, 208, 0.11);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    min-height: 100vh;
+    font-family: var(--font-main);
+    background: linear-gradient(135deg, var(--bg), var(--bg-2));
+    color: var(--text);
+    overflow-x: hidden;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+.ambient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.sun-orb,
+.leaf-orb,
+.coral-orb {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(24px);
+    opacity: 0.54;
+    animation: floatOrb 18s ease-in-out infinite;
+}
+
+.sun-orb {
+    width: 560px;
+    height: 560px;
+    top: -220px;
+    right: 16%;
+    background: radial-gradient(circle, rgba(236, 188, 74, 0.7), transparent 66%);
+}
+
+.leaf-orb {
+    width: 520px;
+    height: 520px;
+    left: -220px;
+    bottom: 6%;
+    background: radial-gradient(circle, rgba(47, 158, 109, 0.48), transparent 68%);
+    animation-delay: -4s;
+}
+
+.coral-orb {
+    width: 380px;
+    height: 380px;
+    right: -120px;
+    bottom: 0;
+    background: radial-gradient(circle, rgba(223, 91, 79, 0.38), transparent 70%);
+    animation-delay: -8s;
+}
+
+.noise-layer {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.28), transparent 72%);
+}
+
+@keyframes floatOrb {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(28px, 36px) scale(1.05); }
+}
+
+.app-frame {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 290px minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+.rail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: 22px;
+    background: var(--rail);
+    color: var(--rail-text);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 18px 0 48px rgba(23, 21, 15, 0.18);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 14px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.brand-mark {
+    width: 48px;
+    height: 48px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: #163026;
+    background: linear-gradient(135deg, #f6d365, #99e2b4);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 12px 28px rgba(0,0,0,0.18);
+}
+
+.brand strong,
+.brand span {
+    display: block;
+}
+
+.brand strong {
+    font-family: var(--font-display);
+    font-size: 18px;
+}
+
+.brand span {
+    color: rgba(255,255,255,0.68);
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.rail-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.nav-btn {
+    position: relative;
+    display: grid;
+    grid-template-columns: 42px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    color: rgba(255,255,255,0.72);
+    background: transparent;
+    text-align: left;
+    transition: 0.22s ease;
+}
+
+.nav-btn span {
+    width: 40px;
+    height: 40px;
+    border-radius: 15px;
+    display: grid;
+    place-items: center;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.92);
+    font-weight: 900;
+}
+
+.nav-btn b {
+    font-size: 14px;
+}
+
+.nav-btn em,
+.mobile-btn em {
+    min-width: 22px;
+    min-height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--danger);
+    color: white;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.nav-btn:hover,
+.nav-btn.active {
+    color: white;
+    background: rgba(255,255,255,0.13);
+    border-color: rgba(255,255,255,0.14);
+    transform: translateX(3px);
+}
+
+.nav-btn.active span {
+    background: linear-gradient(135deg, var(--accent-3), var(--accent-2));
+    color: #1b241d;
+}
+
+.rail-card {
+    margin-top: auto;
+    padding: 16px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+.rail-card small,
+.rail-card code {
+    display: block;
+}
+
+.rail-card small {
+    opacity: 0.64;
+    margin-bottom: 7px;
+}
+
+.rail-card code {
+    white-space: normal;
+    line-height: 1.55;
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+}
+
+.surface {
+    padding: 28px;
+    min-width: 0;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.kicker,
+.page-title span,
+.panel-head span,
+.hero-main small {
+    display: inline-flex;
+    color: var(--accent);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.title-block h1 {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 4vw, 54px);
+    line-height: 0.95;
+    letter-spacing: -0.05em;
+    max-width: 780px;
+    margin-top: 10px;
+}
+
+.title-block p,
+.page-title p,
+.panel-head p {
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.65;
+}
+
+.top-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.search-box,
+.select-pill,
+.notify-pill,
+.connection-pill,
+.ghost-btn,
+.big-notify,
+.date-row input,
+.date-row button,
+.log-tools input,
+.log-tools select,
+.log-tools button,
+.threshold-form input,
+.threshold-form button,
+.sandbox-form button,
+#analysisMode,
+#analysisDate {
+    border: 1px solid var(--line);
+    background: var(--surface-strong);
+    color: var(--text);
+    box-shadow: 0 12px 24px rgba(56, 42, 22, 0.08);
+}
+
+.search-box {
+    min-width: 280px;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-box input {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    width: 100%;
+}
+
+.search-box input::placeholder,
+.log-tools input::placeholder {
+    color: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+
+.select-pill,
+.notify-pill,
+.ghost-btn,
+.big-notify,
+.date-row button,
+.log-tools button,
+.threshold-form button,
+.sandbox-form button,
+#analysisMode,
+#analysisDate,
+.date-row input,
+.log-tools input,
+.log-tools select {
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    outline: 0;
+}
+
+.notify-pill,
+.big-notify,
+.threshold-form button[type="submit"] {
+    background: linear-gradient(135deg, var(--deep), color-mix(in srgb, var(--deep) 72%, var(--accent-2)));
+    color: var(--rail-text);
+    border-color: transparent;
+    font-weight: 900;
+}
+
+.connection-pill {
+    min-height: 46px;
+    border-radius: 999px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    white-space: nowrap;
+}
+
+.connection-pill i {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--warning);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--warning) 20%, transparent);
+}
+
+.connection-pill.connected i {
+    background: var(--safe);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--safe) 22%, transparent);
+}
+
+.connection-pill.disconnected i {
+    background: var(--danger);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+
+.page {
+    display: none;
+}
+
+.page.active {
+    display: block;
+    animation: pageIn 0.28s ease;
+}
+
+@keyframes pageIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
+    gap: 18px;
+}
+
+.hero-card,
+.panel {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+}
+
+.hero-card {
+    min-height: 0;
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    background:
+        radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--accent-3) 28%, transparent), transparent 34%),
+        radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--accent-2) 20%, transparent), transparent 32%),
+        linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 74%, transparent), color-mix(in srgb, var(--surface-solid) 54%, transparent));
+}
+
+.hero-card::after {
+    content: "";
+    position: absolute;
+    width: 340px;
+    height: 340px;
+    border-radius: 999px;
+    right: -110px;
+    bottom: -110px;
+    background: conic-gradient(from 180deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+    opacity: 0.16;
+}
+
+.hero-ribbon,
+.panel-head,
+.tile-top,
+.tile-bottom,
+.page-title.split,
+.date-row,
+.log-tools,
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.live-dot,
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--line);
+    background: var(--surface-strong);
+}
+
+.live-dot i {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--safe);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--safe) 55%, transparent);
+    animation: livePulse 1.5s infinite;
+}
+
+@keyframes livePulse {
+    70% { box-shadow: 0 0 0 12px transparent; }
+}
+
+.status-chip.safe {
+    color: var(--safe);
+    background: color-mix(in srgb, var(--safe) 10%, var(--surface-strong));
+    border-color: color-mix(in srgb, var(--safe) 25%, var(--line));
+}
+
+.status-chip.warning {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 10%, var(--surface-strong));
+    border-color: color-mix(in srgb, var(--warning) 25%, var(--line));
+}
+
+.status-chip.danger {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface-strong));
+    border-color: color-mix(in srgb, var(--danger) 34%, var(--line));
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.hero-main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    align-items: center;
+    gap: 26px;
+    min-height: 0;
+}
+
+.compass {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(circle at 50% 50%, var(--surface-solid) 0 36%, transparent 37%),
+        conic-gradient(var(--safe), var(--accent-3), var(--accent-2), var(--safe));
+    box-shadow: inset 0 0 0 14px color-mix(in srgb, var(--surface-solid) 74%, transparent), 0 24px 45px rgba(0, 0, 0, 0.12);
+}
+
+.compass.warning {
+    background: radial-gradient(circle at 50% 50%, var(--surface-solid) 0 36%, transparent 37%), conic-gradient(var(--warning), var(--accent-2), var(--warning));
+}
+
+.compass.danger {
+    background: radial-gradient(circle at 50% 50%, var(--surface-solid) 0 36%, transparent 37%), conic-gradient(var(--danger), #8f2f2a, var(--accent-2), var(--danger));
+    animation: dangerShake 1.8s infinite;
+}
+
+@keyframes dangerShake {
+    0%, 100% { transform: rotate(0deg); }
+    33% { transform: rotate(2deg); }
+    66% { transform: rotate(-2deg); }
+}
+
+.compass span {
+    width: 80px;
+    height: 80px;
+    border-radius: 30px;
+    display: grid;
+    place-items: center;
+    background: var(--deep);
+    color: var(--rail-text);
+    font-size: 42px;
+    font-weight: 900;
+}
+
+.hero-main h2 {
+    font-family: var(--font-display);
+    font-size: clamp(38px, 5vw, 76px);
+    line-height: 0.92;
+    letter-spacing: -0.07em;
+    margin-top: 8px;
+}
+
+.hero-main p {
+    margin-top: 14px;
+    max-width: 680px;
+    color: var(--soft);
+    line-height: 1.75;
+    font-size: 16px;
+}
+
+.hero-copy {
+    min-width: 0;
+}
+
+.hero-cta-line {
+    margin-top: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-counter,
+.hero-severity-text {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.alert-counter.safe { color: var(--safe); }
+.alert-counter.warning { color: var(--warning); }
+.alert-counter.danger { color: var(--danger); }
+
+.hero-severity-text {
+    color: var(--soft);
+}
+
+.hero-insight-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    gap: 14px;
+}
+
+.hero-callout {
+    padding: 18px;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
+    box-shadow: 0 14px 26px rgba(69, 49, 28, 0.06);
+}
+
+.mini-kicker {
+    display: inline-flex;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.hero-callout strong {
+    display: block;
+    margin-top: 10px;
+    font-family: var(--font-display);
+    font-size: 26px;
+    letter-spacing: -0.04em;
+}
+
+.hero-callout p {
+    margin-top: 8px;
+    color: var(--soft);
+    line-height: 1.65;
+}
+
+.hero-reason-list {
+    list-style: none;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hero-reason-list li {
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    font-weight: 700;
+    line-height: 1.55;
+    background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+}
+
+.hero-reason-list li.safe {
+    color: var(--safe);
+    border-color: color-mix(in srgb, var(--safe) 22%, var(--line));
+    background: color-mix(in srgb, var(--safe) 6%, white);
+}
+
+.hero-reason-list li.warning {
+    color: #8a5d00;
+    border-color: color-mix(in srgb, var(--warning) 28%, var(--line));
+    background: color-mix(in srgb, var(--warning) 9%, white);
+}
+
+.hero-reason-list li.danger {
+    color: #8b2c20;
+    border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
+    background: color-mix(in srgb, var(--danger) 10%, white);
+}
+
+.hero-card.safe {
+    border-color: color-mix(in srgb, var(--safe) 18%, var(--line));
+}
+
+.hero-card.warning {
+    border-color: color-mix(in srgb, var(--warning) 30%, var(--line));
+    background:
+        radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--warning) 18%, transparent), transparent 34%),
+        radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 32%),
+        linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 76%, white), color-mix(in srgb, var(--surface-solid) 58%, transparent));
+}
+
+.hero-card.danger {
+    border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+    background:
+        radial-gradient(circle at 10% 12%, rgba(223, 91, 79, 0.18), transparent 30%),
+        radial-gradient(circle at 88% 10%, rgba(223, 143, 83, 0.18), transparent 28%),
+        linear-gradient(135deg, rgba(255, 251, 250, 0.95), rgba(255, 244, 240, 0.86));
+    box-shadow: 0 26px 70px rgba(162, 73, 59, 0.18);
+}
+
+.hero-card.danger::after {
+    opacity: 0.22;
+}
+
+.hero-card.danger .severity-panel {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--danger) 12%, white), color-mix(in srgb, var(--accent-2) 12%, white));
+    border-color: color-mix(in srgb, var(--danger) 26%, var(--line));
+}
+
+.hero-card.warning .severity-panel {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--warning) 12%, white), color-mix(in srgb, var(--accent-2) 10%, white));
+    border-color: color-mix(in srgb, var(--warning) 26%, var(--line));
+}
+
+.hero-card.danger .hero-main h2 {
+    color: #341f24;
+}
+
+.quick-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.quick-grid div,
+.summary-grid div,
+.health-list div {
+    padding: 14px;
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
+    border: 1px solid var(--line);
+}
+
+.quick-grid span,
+.summary-grid span,
+.health-list span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.quick-grid strong,
+.summary-grid strong,
+.health-list strong {
+    display: block;
+    margin-top: 7px;
+    font-family: var(--font-display);
+    font-size: 17px;
+}
+
+.panel {
+    padding: 22px;
+}
+
+.panel-head {
+    margin-bottom: 16px;
+}
+
+.panel-head.tight {
+    margin-bottom: 14px;
+}
+
+.panel-head h2,
+.page-title h2 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    letter-spacing: -0.04em;
+    margin-top: 4px;
+}
+
+.brief-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.brief-text {
+    font-size: 18px;
+    line-height: 1.75;
+    color: var(--soft);
+}
+
+.recommendation-list,
+.mini-alert-list,
+.pattern-notes,
+.ratio-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.recommendation-list {
+    /* margin-top: auto; */
+    padding-top: 18px;
+}
+
+.recommendation,
+.mini-alert,
+.pattern-note {
+    padding: 13px 14px;
+    border-radius: 18px;
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    color: var(--soft);
+    line-height: 1.55;
+}
+
+.recommendation.safe,
+.mini-alert.safe,
+.pattern-note.safe {
+    border-left: 5px solid var(--safe);
+}
+
+.recommendation.warning,
+.mini-alert.warning,
+.pattern-note.warning {
+    border-left: 5px solid var(--warning);
+}
+
+.recommendation.danger,
+.mini-alert.danger,
+.pattern-note.danger {
+    border-left: 5px solid var(--danger);
+}
+
+.sensor-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.sensor-tile {
+    padding: 22px;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    transition: 0.24s ease;
+}
+
+.sensor-tile:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lift);
+}
+
+.tile-top span {
+    font-weight: 900;
+    color: var(--soft);
+}
+
+.tile-top b {
+    color: var(--muted);
+}
+
+.sensor-value {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 28px 0 20px;
+}
+
+.sensor-value strong {
+    font-family: var(--font-display);
+    font-size: clamp(42px, 5vw, 72px);
+    line-height: 0.85;
+    letter-spacing: -0.07em;
+}
+
+.sensor-value em {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    font-style: normal;
+    color: var(--muted);
+    font-weight: 900;
+}
+
+.liquid-meter {
+    height: 16px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--muted) 16%, transparent);
+    border: 1px solid var(--line);
+}
+
+.liquid-meter i {
+    display: block;
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.65s cubic-bezier(0.2, 1, 0.2, 1);
+}
+
+.temp .liquid-meter i {
+    background: linear-gradient(90deg, #d8b949, #df7a46, #df5b4f);
+}
+
+.humid .liquid-meter i {
+    background: linear-gradient(90deg, #6ca78e, #35a58c, #0f8b72);
+}
+
+.dust .liquid-meter i {
+    background: linear-gradient(90deg, #99bf65, #d8b949, #df5b4f);
+}
+
+.tile-bottom {
+    margin-top: 14px;
+    align-items: flex-start;
+}
+
+.tile-bottom span {
+    font-weight: 900;
+}
+
+.tile-bottom small {
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.5;
+}
+
+.sensor-tile.safe {
+    outline: 1px solid color-mix(in srgb, var(--safe) 26%, transparent);
+}
+
+.sensor-tile.warning {
+    outline: 1px solid color-mix(in srgb, var(--warning) 34%, transparent);
+}
+
+.sensor-tile.danger {
+    outline: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+    box-shadow: 0 22px 60px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.main-grid,
+.lab-grid,
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.span-2 {
+    grid-column: span 2;
+}
+
+.span-3 {
+    grid-column: 1 / -1;
+}
+
+.chart-box {
+    height: 360px;
+}
+
+.chart-box.tall {
+    height: 430px;
+}
+
+.chart-box canvas,
+.donut-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.seg-control {
+    display: inline-flex;
+    gap: 4px;
+    padding: 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-strong) 75%, transparent);
+    border: 1px solid var(--line);
+}
+
+.seg {
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 900;
+}
+
+.seg.active {
+    background: var(--deep);
+    color: var(--rail-text);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.danger-box {
+    color: var(--danger);
+}
+
+.warning-box {
+    color: var(--warning);
+}
+
+.health-list {
+    display: grid;
+    gap: 10px;
+}
+
+.health-list strong.safe,
+.health-list strong.online {
+    color: var(--safe);
+}
+
+.health-list strong.warning,
+.health-list strong.checking {
+    color: var(--warning);
+}
+
+.health-list strong.danger,
+.health-list strong.offline {
+    color: var(--danger);
+}
+
+.page-title {
+    margin-bottom: 18px;
+}
+
+.donut-wrap {
+    height: 260px;
+}
+
+.ratio-legend div {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 15px;
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+}
+
+.log-panel {
+    padding: 16px;
+}
+
+.log-tools {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-bottom: 14px;
+}
+
+.log-tools input,
+.log-tools select {
+    min-width: 160px;
+}
+
+#logSearch {
+    flex: 1;
+    min-width: 240px;
+}
+
+.table-wrap {
+    overflow: auto;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 820px;
+    background: var(--surface-strong);
+}
+
+th,
+td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+td {
+    color: var(--soft);
+    font-weight: 650;
+}
+
+.status-pill {
+    display: inline-flex;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.status-pill.safe {
+    color: var(--safe);
+}
+
+.status-pill.warning {
+    color: var(--warning);
+}
+
+.status-pill.danger {
+    color: var(--danger);
+}
+
+.log-cards {
+    display: none;
+}
+
+.load-row {
+    text-align: center;
+    margin-top: 14px;
+}
+
+.load-row button {
+    border: 1px solid var(--line);
+    background: var(--deep);
+    color: var(--rail-text);
+    border-radius: 999px;
+    min-height: 44px;
+    padding: 0 24px;
+    font-weight: 900;
+}
+
+.alert-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 18px;
+}
+
+.alert-hero h2 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    letter-spacing: -0.04em;
+    margin: 4px 0 8px;
+}
+
+.alert-hero span {
+    color: var(--accent);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 12px;
+}
+
+.alert-hero p {
+    color: var(--muted);
+    line-height: 1.65;
+}
+
+.big-notify {
+    min-height: 54px;
+    padding: 0 22px;
+}
+
+.alert-list {
+    display: grid;
+    gap: 14px;
+}
+
+.alert-item {
+    display: grid;
+    grid-template-columns: 58px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 18px;
+    border-radius: 26px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+}
+
+.alert-item .alert-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+    color: white;
+    font-size: 28px;
+    font-weight: 900;
+}
+
+.alert-item.warning .alert-icon {
+    background: var(--warning);
+}
+
+.alert-item.danger .alert-icon {
+    background: var(--danger);
+}
+
+.alert-item h3 {
+    font-family: var(--font-display);
+    font-size: 22px;
+}
+
+.alert-item p,
+.alert-item small {
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.empty-state {
+    display: none;
+    text-align: center;
+    padding: 70px 20px;
+    color: var(--muted);
+}
+
+.empty-state.show {
+    display: block;
+}
+
+.empty-state strong {
+    width: 78px;
+    height: 78px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 16px;
+    border-radius: 28px;
+    background: color-mix(in srgb, var(--safe) 14%, var(--surface-strong));
+    color: var(--safe);
+    font-size: 44px;
+}
+
+.story-flow {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+}
+
+.flow-card {
+    position: relative;
+    min-height: 230px;
+    padding: 20px;
+    border-radius: 30px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-soft);
+}
+
+.flow-card b {
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    background: var(--deep);
+    color: var(--rail-text);
+}
+
+.flow-card h3 {
+    font-family: var(--font-display);
+    margin: 26px 0 12px;
+    font-size: 24px;
+    letter-spacing: -0.04em;
+}
+
+.flow-card p,
+.explanation-card p,
+.hint {
+    color: var(--muted);
+    line-height: 1.75;
+}
+
+.explanation-card {
+    margin-top: 18px;
+}
+
+.explanation-card h2 {
+    font-family: var(--font-display);
+    margin-bottom: 8px;
+}
+
+.threshold-form,
+.sandbox-form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.threshold-form label,
+.sandbox-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--soft);
+    font-weight: 800;
+}
+
+.threshold-form input {
+    border-radius: 16px;
+    min-height: 46px;
+    padding: 0 13px;
+}
+
+.form-actions,
+.sandbox-form button,
+.sandbox-form .hint {
+    grid-column: 1 / -1;
+}
+
+.sandbox-form input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+}
+
+.sandbox-form output {
+    font-family: var(--font-display);
+    color: var(--accent);
+}
+
+.mobile-nav {
+    display: none;
+}
+
+.toast {
+    position: fixed;
+    z-index: 20;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(140%);
+    max-width: min(560px, calc(100vw - 28px));
+    padding: 14px 16px;
+    border-radius: 20px;
+    background: var(--deep);
+    color: var(--rail-text);
+    box-shadow: 0 22px 50px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    transition: 0.25s ease;
+    font-weight: 800;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 1180px) {
+    .app-frame {
+        grid-template-columns: 1fr;
+    }
+
+    .rail {
+        display: none;
+    }
+
+    .surface {
+        padding: 22px 18px 102px;
+    }
+
+    .mobile-nav {
+        position: fixed;
+        z-index: 10;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        left: 12px;
+        right: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom));
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+        box-shadow: 0 18px 44px rgba(44, 34, 18, 0.2);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+    }
+
+    .mobile-btn {
+        position: relative;
+        min-height: 58px;
+        border: 0;
+        border-radius: 22px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 2px;
+        background: transparent;
+        color: var(--muted);
+        font-weight: 900;
+    }
+
+    .mobile-btn span {
+        font-size: 18px;
+    }
+
+    .mobile-btn small {
+        font-size: 11px;
+    }
+
+    .mobile-btn.active {
+        background: var(--deep);
+        color: var(--rail-text);
+    }
+
+    .mobile-btn em {
+        position: absolute;
+        right: 9px;
+        top: 6px;
+    }
+}
+
+@media (max-width: 960px) {
+    .topbar,
+    .hero-layout,
+    .main-grid,
+    .lab-grid,
+    .settings-grid,
+    .sensor-strip,
+    .story-flow {
+        grid-template-columns: 1fr;
+    }
+
+    .topbar {
+        display: grid;
+    }
+
+    .top-actions {
+        justify-content: flex-start;
+    }
+
+    .search-box {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .span-2,
+    .span-3 {
+        grid-column: auto;
+    }
+
+    .hero-main {
+        grid-template-columns: 1fr;
+        text-align: center;
+        justify-items: center;
+    }
+
+    .hero-cta-line,
+    .hero-copy {
+        justify-content: center;
+    }
+
+    .hero-insight-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .panel-head,
+    .page-title.split,
+    .alert-hero {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 620px) {
+    .surface {
+        padding: 18px 12px 102px;
+    }
+
+    .title-block h1 {
+        font-size: 38px;
+    }
+
+    .hero-card,
+    .panel,
+    .sensor-tile {
+        border-radius: 26px;
+        padding: 18px;
+    }
+
+    .hero-ribbon,
+    .tile-bottom,
+    .date-row,
+    .log-tools,
+    .form-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hero-cta-line {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .compass {
+        width: 132px;
+        height: 132px;
+    }
+
+    .hero-main h2 {
+        font-size: 46px;
+    }
+
+    .quick-grid,
+    .summary-grid,
+    .threshold-form,
+    .sandbox-form {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-box,
+    .chart-box.tall {
+        height: 310px;
+    }
+
+    .seg-control {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .seg {
+        white-space: nowrap;
+    }
+
+    .table-wrap {
+        display: none;
+    }
+
+    .log-cards {
+        display: grid;
+        gap: 12px;
+    }
+
+    .log-card {
+        padding: 14px;
+        border-radius: 22px;
+        background: var(--surface-strong);
+        border: 1px solid var(--line);
+    }
+
+    .log-card h3 {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .log-card p {
+        color: var(--muted);
+        line-height: 1.6;
+        margin-top: 6px;
+    }
+
+    .alert-item {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================================================
+   SETTINGS PAGE FIX v2
+   The settings page uses only 2 columns on desktop so the
+   threshold card has enough room. It also prevents inputs from
+   overflowing inside grid cells on narrow screens.
+   ========================================================= */
+.settings-grid {
+    grid-template-columns: minmax(560px, 1.45fr) minmax(360px, 0.95fr) !important;
+    align-items: start;
+}
+
+.settings-grid > .panel {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.threshold-form {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+    align-items: end;
+}
+
+.threshold-form label,
+.sandbox-form label {
+    min-width: 0;
+}
+
+.threshold-form input,
+.sandbox-form input[type="range"] {
+    width: 100%;
+    min-width: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.form-actions button {
+    flex: 1 1 180px;
+    white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+    .settings-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 620px) {
+    .threshold-form,
+    .sandbox-form {
+        grid-template-columns: 1fr !important;
+    }
+
+    .form-actions button {
+        width: 100%;
+        height: 50px;
+    }
+}
+
+
+/* =========================================================
+   MOBILE + ALERT CLEANUP FINAL
+   ========================================================= */
+.main-grid {
+    grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.75fr);
+}
+
+.log-row.safe td { background: color-mix(in srgb, var(--safe) 4%, transparent); }
+.log-row.warning td { background: color-mix(in srgb, var(--warning) 6%, transparent); }
+.log-row.danger td { background: color-mix(in srgb, var(--danger) 6%, transparent); }
+
+.alert-list {
+    gap: 18px;
+}
+
+.alert-item {
+    grid-template-columns: 62px minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+    padding: 20px;
+}
+
+.alert-item.warning {
+    border-color: color-mix(in srgb, var(--warning) 35%, var(--line));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--warning) 10%, white), var(--surface));
+}
+
+.alert-item.danger {
+    border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--danger) 11%, white), var(--surface));
+    box-shadow: 0 22px 50px color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.alert-content {
+    min-width: 0;
+}
+
+.alert-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.alert-item h3 {
+    font-size: 24px;
+    line-height: 1.05;
+    margin-bottom: 8px;
+}
+
+.alert-item p {
+    margin-top: 4px;
+    color: var(--soft);
+}
+
+.alert-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.recommendation-list {
+    gap: 12px;
+}
+
+.hero-reason-list li,
+.recommendation,
+.pattern-note,
+.mini-alert {
+    line-height: 1.65;
+}
+
+.log-card {
+    border-left: 6px solid transparent;
+}
+
+.log-card.safe { border-left-color: var(--safe); }
+.log-card.warning { border-left-color: var(--warning); }
+.log-card.danger { border-left-color: var(--danger); }
+
+.log-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.log-card-head small {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.log-reading-line {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.log-reading-line b {
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: var(--surface);
+    text-align: center;
+}
+
+@media (max-width: 960px) {
+    .top-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+    }
+
+    .top-actions .search-box,
+    .top-actions .connection-pill {
+        grid-column: 1 / -1;
+    }
+
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-card,
+    .brief-card,
+    .summary-card,
+    .chart-panel {
+        border-radius: 28px;
+    }
+
+    .mobile-nav {
+        left: 10px;
+        right: 10px;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        padding: 10px;
+        gap: 8px;
+        border-radius: 30px;
+        box-shadow: 0 18px 40px rgba(44, 34, 18, 0.18);
+    }
+
+    .mobile-btn {
+        min-height: 62px;
+        border-radius: 20px;
+        gap: 4px;
+    }
+
+    .mobile-btn span { font-size: 19px; }
+    .mobile-btn small { font-size: 11px; font-weight: 800; }
+}
+
+@media (max-width: 620px) {
+    .surface {
+        padding: 14px 10px 108px;
+    }
+
+    .title-block p {
+        font-size: 14px;
+    }
+
+    .top-actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .top-actions .select-pill,
+    .top-actions .notify-pill {
+        width: 100%;
+    }
+
+    .top-actions .connection-pill {
+        justify-content: center;
+    }
+
+    .hero-card,
+    .brief-card,
+    .panel,
+    .sensor-tile {
+        padding: 16px;
+        border-radius: 22px;
+    }
+
+    .hero-main h2 {
+        font-size: 38px;
+    }
+
+    .brief-text {
+        font-size: 16px;
+    }
+
+    .hero-callout strong {
+        font-size: 22px;
+    }
+
+    .sensor-strip {
+        gap: 12px;
+    }
+
+    .sensor-value {
+        margin: 18px 0 14px;
+    }
+
+    .sensor-value strong {
+        font-size: 38px;
+    }
+
+    .tile-bottom small {
+        text-align: left;
+    }
+
+    .alert-item {
+        padding: 16px;
+        border-radius: 22px;
+    }
+
+    .alert-topline {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .alert-item h3 {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+
+    .alert-icon {
+        width: 52px !important;
+        height: 52px !important;
+        border-radius: 16px !important;
+        font-size: 24px !important;
+    }
+
+    .log-card {
+        padding: 14px;
+        border-radius: 18px;
+    }
+
+    .log-reading-line {
+        grid-template-columns: 1fr;
+    }
+
+    .mobile-nav {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .mobile-btn {
+        min-height: 58px;
+        padding: 4px;
+    }
+}
+
+
+/* =========================================================
+   SENSOR LEVEL COLOR FIX
+   The meter, label, trend and helper text now follow
+   Safe = green, Warning = yellow/orange, Danger = red.
+   ========================================================= */
+
+.sensor-tile.safe {
+    border-color: color-mix(in srgb, var(--safe) 34%, var(--line));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--safe) 6%, white), var(--surface));
+}
+
+.sensor-tile.warning {
+    border-color: color-mix(in srgb, var(--warning) 40%, var(--line));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--warning) 8%, white), var(--surface));
+}
+
+.sensor-tile.danger {
+    border-color: color-mix(in srgb, var(--danger) 42%, var(--line));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--danger) 9%, white), var(--surface));
+}
+
+.sensor-tile.safe .tile-bottom span,
+.sensor-tile.safe .sensor-value em,
+.sensor-tile.safe .tile-top b {
+    color: var(--safe);
+}
+
+.sensor-tile.warning .tile-bottom span,
+.sensor-tile.warning .sensor-value em,
+.sensor-tile.warning .tile-top b {
+    color: var(--warning);
+}
+
+.sensor-tile.danger .tile-bottom span,
+.sensor-tile.danger .sensor-value em,
+.sensor-tile.danger .tile-top b {
+    color: var(--danger);
+}
+
+.sensor-tile.safe .tile-bottom small {
+    color: color-mix(in srgb, var(--safe) 72%, var(--muted));
+}
+
+.sensor-tile.warning .tile-bottom small {
+    color: color-mix(in srgb, var(--warning) 76%, var(--muted));
+}
+
+.sensor-tile.danger .tile-bottom small {
+    color: color-mix(in srgb, var(--danger) 78%, var(--muted));
+}
+
+.sensor-tile.safe .liquid-meter {
+    background: color-mix(in srgb, var(--safe) 10%, white);
+    border-color: color-mix(in srgb, var(--safe) 28%, var(--line));
+}
+
+.sensor-tile.warning .liquid-meter {
+    background: color-mix(in srgb, var(--warning) 11%, white);
+    border-color: color-mix(in srgb, var(--warning) 30%, var(--line));
+}
+
+.sensor-tile.danger .liquid-meter {
+    background: color-mix(in srgb, var(--danger) 12%, white);
+    border-color: color-mix(in srgb, var(--danger) 32%, var(--line));
+}
+
+.sensor-tile.safe .liquid-meter i {
+    background: linear-gradient(90deg, #79c9a3, #39b27d, #159565) !important;
+}
+
+.sensor-tile.warning .liquid-meter i {
+    background: linear-gradient(90deg, #f2cf57, #e8ad37, #dc8c1d) !important;
+}
+
+.sensor-tile.danger .liquid-meter i {
+    background: linear-gradient(90deg, #ff9a87, #f2644d, #dc3f35) !important;
+}
+
+/* FULL màu theo mức cho sensor card */
+.sensor-tile.safe .sensor-value strong,
+.sensor-tile.safe .tile-bottom span,
+.sensor-tile.safe .sensor-value em,
+.sensor-tile.safe .tile-top b {
+    color: var(--safe) !important;
+}
+
+.sensor-tile.warning .sensor-value strong,
+.sensor-tile.warning .tile-bottom span,
+.sensor-tile.warning .sensor-value em,
+.sensor-tile.warning .tile-top b {
+    color: var(--warning) !important;
+}
+
+.sensor-tile.danger .sensor-value strong,
+.sensor-tile.danger .tile-bottom span,
+.sensor-tile.danger .sensor-value em,
+.sensor-tile.danger .tile-top b {
+    color: var(--danger) !important;
+}
+
+.sensor-tile.safe .tile-bottom small {
+    color: color-mix(in srgb, var(--safe) 72%, var(--muted)) !important;
+}
+
+.sensor-tile.warning .tile-bottom small {
+    color: color-mix(in srgb, var(--warning) 76%, var(--muted)) !important;
+}
+
+.sensor-tile.danger .tile-bottom small {
+    color: color-mix(in srgb, var(--danger) 78%, var(--muted)) !important;
+}
+
+/* Ẩn luôn 3 ô ở mọi màn hình */
+/* .quick-grid > div:nth-child(2),
+.quick-grid > div:nth-child(3),
+.quick-grid > div:nth-child(4) {
+    display: none !important;
+}
+
+.quick-grid {
+    grid-template-columns: 1fr !important;
+} */
+
+/* Quick time info: Local time + Database update */
+.quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.quick-grid div {
+    min-height: 82px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.quick-grid span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.quick-grid strong {
+    font-family: var(--font-display);
+    font-size: 20px;
+    margin-top: 8px;
+}
+
+/* Mobile: cho 2 ô xuống hàng dọc để dễ đọc */
+@media (max-width: 620px) {
+    .quick-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* MOBILE: ẩn Smart Insight ở trang Home */
+@media (max-width: 960px) {
+    .brief-card {
+        display: none !important;
+    }
+
+    .hero-layout {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
+
+/* =========================================================
+   REAL FINAL FIX: force sensor colors by status
+   This uses both class and --metric-color set by app.js.
+   ========================================================= */
+.sensor-tile {
+    --metric-color: var(--safe);
+}
+.sensor-tile.safe { --metric-color: var(--safe); }
+.sensor-tile.warning { --metric-color: var(--warning); }
+.sensor-tile.danger { --metric-color: var(--danger); }
+
+.sensor-tile .sensor-value strong,
+.sensor-tile .sensor-value em,
+.sensor-tile .tile-bottom span,
+.sensor-tile .tile-bottom small,
+.sensor-tile .tile-top b {
+    color: var(--metric-color) !important;
+}
+
+#tempTile.safe #tempValue,
+#humidTile.safe #humidValue,
+#dustTile.safe #dustValue { color: var(--safe) !important; }
+#tempTile.warning #tempValue,
+#humidTile.warning #humidValue,
+#dustTile.warning #dustValue { color: var(--warning) !important; }
+#tempTile.danger #tempValue,
+#humidTile.danger #humidValue,
+#dustTile.danger #dustValue { color: var(--danger) !important; }
+
+.sensor-tile.safe {
+    border-color: rgba(47, 158, 109, 0.35) !important;
+    background: linear-gradient(145deg, rgba(47, 158, 109, 0.07), rgba(255,255,255,0.72)) !important;
+}
+.sensor-tile.warning {
+    border-color: rgba(216, 148, 29, 0.48) !important;
+    background: linear-gradient(145deg, rgba(216, 148, 29, 0.12), rgba(255,255,255,0.72)) !important;
+}
+.sensor-tile.danger {
+    border-color: rgba(223, 91, 79, 0.55) !important;
+    background: linear-gradient(145deg, rgba(223, 91, 79, 0.14), rgba(255,255,255,0.72)) !important;
+    box-shadow: 0 22px 58px rgba(223, 91, 79, 0.18) !important;
+}
+
+.sensor-tile.safe .liquid-meter i { background: linear-gradient(90deg, #79c9a3, #39b27d, #159565) !important; }
+.sensor-tile.warning .liquid-meter i { background: linear-gradient(90deg, #f2cf57, #e8ad37, #dc8c1d) !important; }
+.sensor-tile.danger .liquid-meter i { background: linear-gradient(90deg, #ff9a87, #f2644d, #dc3f35) !important; }
+
+.hero-card.danger .hero-callout,
+.hero-card.danger .severity-panel,
+.hero-card.danger .reasons-panel {
+    border-color: rgba(223, 91, 79, 0.35) !important;
+}
+.hero-card.danger .hero-callout strong,
+.hero-card.danger .hero-callout p,
+.hero-card.danger .hero-reason-list li {
+    color: #a33a30 !important;
+}
+.hero-card.warning .hero-callout strong,
+.hero-card.warning .hero-callout p,
+.hero-card.warning .hero-reason-list li {
+    color: #9a650f !important;
+}
+.hero-card.safe .hero-callout strong,
+.hero-card.safe .hero-callout p,
+.hero-card.safe .hero-reason-list li {
+    color: #1d7a55 !important;
+}
+
+/* HOME: sau khi bỏ Smart Insight, cho hero chiếm full ngang */
+.hero-layout {
+    grid-template-columns: 1fr !important;
+}
+
+.hero-card {
+    width: 100%;
+}
+
+/* =========================================================
+   FINAL COLOR SYSTEM - BRIGHT WARNING / STRONG DANGER
+   Paste this at the VERY END of style.css
+   ========================================================= */
+
+:root {
+    --safe: #14a86b;
+    --warning: #ffb000;
+    --warning-dark: #b86f00;
+    --warning-soft: #fff3c4;
+
+    --danger: #f0182d;
+    --danger-dark: #8f0010;
+    --danger-soft: #ffe1e5;
+
+    --safe-soft: #ddf8ea;
+}
+
+/* =========================
+   SENSOR CARD COLORS
+   ========================= */
+
+.sensor-tile.safe {
+    --metric-color: var(--safe);
+    border-color: rgba(20, 168, 107, 0.45) !important;
+    background:
+        linear-gradient(145deg, rgba(20, 168, 107, 0.10), rgba(255, 255, 255, 0.82)) !important;
+    box-shadow: 0 18px 42px rgba(20, 168, 107, 0.10) !important;
+}
+
+.sensor-tile.warning {
+    --metric-color: var(--warning);
+    border-color: rgba(255, 176, 0, 0.65) !important;
+    background:
+        linear-gradient(145deg, rgba(255, 176, 0, 0.20), rgba(255, 255, 255, 0.84)) !important;
+    box-shadow: 0 20px 48px rgba(255, 176, 0, 0.18) !important;
+}
+
+.sensor-tile.danger {
+    --metric-color: var(--danger);
+    border-color: rgba(240, 24, 45, 0.70) !important;
+    background:
+        linear-gradient(145deg, rgba(240, 24, 45, 0.20), rgba(255, 255, 255, 0.84)) !important;
+    box-shadow: 0 22px 58px rgba(240, 24, 45, 0.24) !important;
+}
+
+/* Số lớn, unit, trend, level, mô tả đều đổi màu */
+.sensor-tile .sensor-value strong,
+.sensor-tile .sensor-value em,
+.sensor-tile .tile-bottom span,
+.sensor-tile .tile-bottom small,
+.sensor-tile .tile-top b {
+    color: var(--metric-color) !important;
+}
+
+/* Trend badge rõ hơn */
+.sensor-tile.safe .sensor-value em {
+    background: rgba(20, 168, 107, 0.10) !important;
+    border-color: rgba(20, 168, 107, 0.30) !important;
+}
+
+.sensor-tile.warning .sensor-value em {
+    background: rgba(255, 176, 0, 0.16) !important;
+    border-color: rgba(255, 176, 0, 0.45) !important;
+}
+
+.sensor-tile.danger .sensor-value em {
+    background: rgba(240, 24, 45, 0.14) !important;
+    border-color: rgba(240, 24, 45, 0.45) !important;
+}
+
+/* Thanh đo */
+.sensor-tile.safe .liquid-meter {
+    background: rgba(20, 168, 107, 0.12) !important;
+    border-color: rgba(20, 168, 107, 0.35) !important;
+}
+
+.sensor-tile.warning .liquid-meter {
+    background: rgba(255, 176, 0, 0.16) !important;
+    border-color: rgba(255, 176, 0, 0.45) !important;
+}
+
+.sensor-tile.danger .liquid-meter {
+    background: rgba(240, 24, 45, 0.15) !important;
+    border-color: rgba(240, 24, 45, 0.48) !important;
+}
+
+.sensor-tile.safe .liquid-meter i {
+    background: linear-gradient(90deg, #5ee3a2, #14a86b, #087f4f) !important;
+}
+
+.sensor-tile.warning .liquid-meter i {
+    background: linear-gradient(90deg, #ffe066, #ffb000, #ff8c00) !important;
+}
+
+.sensor-tile.danger .liquid-meter i {
+    background: linear-gradient(90deg, #ff8a8a, #ff3347, #f0182d) !important;
+}
+
+/* =========================
+   HERO DANGER / WARNING
+   ========================= */
+
+.hero-card.danger {
+    border-color: rgba(240, 24, 45, 0.42) !important;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(240, 24, 45, 0.24), transparent 32%),
+        radial-gradient(circle at 88% 12%, rgba(255, 90, 90, 0.18), transparent 30%),
+        linear-gradient(135deg, rgba(255, 246, 247, 0.98), rgba(255, 220, 225, 0.90)) !important;
+    box-shadow:
+        0 34px 90px rgba(240, 24, 45, 0.20),
+        inset 0 1px 0 rgba(255,255,255,0.75) !important;
+}
+
+.hero-card.warning {
+    border-color: rgba(255, 176, 0, 0.48) !important;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(255, 176, 0, 0.26), transparent 32%),
+        radial-gradient(circle at 88% 12%, rgba(255, 205, 80, 0.20), transparent 30%),
+        linear-gradient(135deg, rgba(255, 251, 238, 0.98), rgba(255, 239, 184, 0.88)) !important;
+    box-shadow:
+        0 30px 80px rgba(255, 176, 0, 0.16),
+        inset 0 1px 0 rgba(255,255,255,0.75) !important;
+}
+
+.hero-card.danger .hero-main h2 {
+    color: #30020a !important;
+}
+
+.hero-card.warning .hero-main h2 {
+    color: #422600 !important;
+}
+
+.hero-card.danger .hero-main small,
+.hero-card.danger .mini-kicker {
+    color: var(--danger) !important;
+}
+
+.hero-card.warning .hero-main small,
+.hero-card.warning .mini-kicker {
+    color: var(--warning-dark) !important;
+}
+
+/* =========================
+   COMPASS ICON
+   ========================= */
+
+/* .compass {
+    justify-self: center !important;
+    align-self: center !important;
+}
+
+.compass.danger {
+    background:
+        radial-gradient(circle at 50% 50%, rgba(255, 248, 248, 1) 0 35%, transparent 36%),
+        conic-gradient(#ff9aa3, #ff3347, #b50015, #f0182d, #ff9aa3) !important;
+    box-shadow:
+        inset 0 0 0 14px rgba(255, 236, 239, 0.92),
+        0 26px 65px rgba(240, 24, 45, 0.28) !important;
+    animation: dangerPulseClean 2s ease-in-out infinite !important;
+}
+
+.compass.warning {
+    background:
+        radial-gradient(circle at 50% 50%, rgba(255, 251, 235, 1) 0 35%, transparent 36%),
+        conic-gradient(#ffe066, #ffb000, #ff8c00, #ffb000, #ffe066) !important;
+    box-shadow:
+        inset 0 0 0 14px rgba(255, 246, 210, 0.92),
+        0 24px 60px rgba(255, 176, 0, 0.22) !important;
+}
+
+.compass span {
+    display: grid !important;
+    place-items: center !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+}
+
+.compass.danger span {
+    background: linear-gradient(135deg, #4b0008, #210006) !important;
+    color: #fff4f5 !important;
+    animation: iconFloatClean 1.6s ease-in-out infinite !important;
+}
+
+.compass.warning span {
+    background: linear-gradient(135deg, #5c3500, #2f1a00) !important;
+    color: #fff5cf !important;
+}
+
+#statusIcon {
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    line-height: 1 !important;
+    transform-origin: center center !important;
+}
+
+@keyframes dangerPulseClean {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.025);
+    }
+}
+
+@keyframes iconFloatClean {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+} */
+
+/* =========================
+   PILLS / BADGES
+   ========================= */
+
+.status-chip.danger,
+.alert-counter.danger,
+.status-pill.danger {
+    color: white !important;
+    background: linear-gradient(135deg, #ff4052, #f0182d) !important;
+    border-color: rgba(150, 0, 18, 0.35) !important;
+    box-shadow: 0 10px 24px rgba(240, 24, 45, 0.18) !important;
+}
+
+.status-chip.warning,
+.alert-counter.warning,
+.status-pill.warning {
+    color: #3d2300 !important;
+    background: linear-gradient(135deg, #ffd75a, #ffb000) !important;
+    border-color: rgba(184, 111, 0, 0.35) !important;
+    box-shadow: 0 10px 24px rgba(255, 176, 0, 0.16) !important;
+}
+
+.status-chip.safe,
+.alert-counter.safe,
+.status-pill.safe {
+    color: white !important;
+    background: linear-gradient(135deg, #35d18a, #14a86b) !important;
+    border-color: rgba(20, 168, 107, 0.35) !important;
+}
+
+/* =========================
+   HERO CALLOUTS
+   ========================= */
+
+.hero-card.danger .hero-callout,
+.hero-card.danger .severity-panel,
+.hero-card.danger .reasons-panel {
+    border-color: rgba(240, 24, 45, 0.32) !important;
+    background: linear-gradient(135deg, rgba(255, 238, 241, 0.96), rgba(255, 255, 255, 0.78)) !important;
+}
+
+.hero-card.warning .hero-callout,
+.hero-card.warning .severity-panel,
+.hero-card.warning .reasons-panel {
+    border-color: rgba(255, 176, 0, 0.36) !important;
+    background: linear-gradient(135deg, rgba(255, 246, 210, 0.96), rgba(255, 255, 255, 0.78)) !important;
+}
+
+.hero-reason-list li.danger {
+    color: var(--danger-dark) !important;
+    border-color: rgba(240, 24, 45, 0.34) !important;
+    background: rgba(255, 225, 229, 0.82) !important;
+    box-shadow: inset 6px 0 0 var(--danger);
+}
+
+.hero-reason-list li.warning {
+    color: #6e4300 !important;
+    border-color: rgba(255, 176, 0, 0.40) !important;
+    background: rgba(255, 243, 196, 0.86) !important;
+    box-shadow: inset 6px 0 0 var(--warning);
+}
+
+/* Chỉnh tỉ lệ 2 cột trong phần Severity Focus / What Triggered */
+.hero-insight-grid {
+    grid-template-columns: minmax(340px, 0.45fr) minmax(0, 0.55fr) !important;
+    gap: 16px !important;
+}
+
+/* Cho cột trái thoáng hơn */
+.severity-panel {
+    min-width: 340px !important;
+}
+
+/* Cột phải nhỏ lại và không bị tràn */
+.reasons-panel {
+    min-width: 0 !important;
+}
+
+/* Mobile vẫn xếp dọc cho dễ đọc */
+@media (max-width: 960px) {
+    .hero-insight-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .severity-panel {
+        min-width: 0 !important;
+    }
+}
+
+/* =========================================================
+   THEME EXPANSION + GRAPHITE READABILITY FIX
+   Paste at the VERY END of style.css
+   ========================================================= */
+
+/* ---------- Graphite Lime: dễ nhìn hơn ---------- */
+body.theme-graphite {
+    --bg: #101510;
+    --bg-2: #1b241a;
+    --surface: rgba(28, 35, 29, 0.82);
+    --surface-solid: #1d261f;
+    --surface-strong: rgba(35, 44, 36, 0.92);
+
+    --text: #f6f6e8;
+    --muted: #c7cfb7;
+    --soft: #dde3d0;
+    --line: rgba(240, 244, 224, 0.14);
+
+    --accent: #94e365;
+    --accent-2: #ffbf66;
+    --accent-3: #58d1b2;
+    --deep: #f7f8ea;
+
+    --safe: #35d78e;
+    --warning: #ffbf29;
+    --danger: #ff4052;
+}
+
+body.theme-graphite .surface,
+body.theme-graphite .panel,
+body.theme-graphite .hero-card,
+body.theme-graphite .sensor-tile,
+body.theme-graphite .summary-card,
+body.theme-graphite .chart-panel,
+body.theme-graphite .alert-item,
+body.theme-graphite .log-card,
+body.theme-graphite .table-wrap,
+body.theme-graphite .flow-card,
+body.theme-graphite .rail-card {
+    background: linear-gradient(145deg, rgba(26, 34, 28, 0.94), rgba(34, 44, 36, 0.88)) !important;
+    border-color: rgba(239, 244, 223, 0.12) !important;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22) !important;
+}
+
+body.theme-graphite .hero-card.safe {
+    background:
+        radial-gradient(circle at 18% 20%, rgba(53, 215, 142, 0.16), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(88, 209, 178, 0.12), transparent 26%),
+        linear-gradient(145deg, rgba(24, 34, 29, 0.96), rgba(31, 43, 35, 0.92)) !important;
+}
+
+body.theme-graphite .hero-card.warning {
+    background:
+        radial-gradient(circle at 18% 20%, rgba(255, 191, 41, 0.18), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(255, 165, 66, 0.12), transparent 26%),
+        linear-gradient(145deg, rgba(36, 34, 23, 0.96), rgba(45, 40, 25, 0.92)) !important;
+}
+
+body.theme-graphite .hero-card.danger {
+    background:
+        radial-gradient(circle at 18% 20%, rgba(255, 64, 82, 0.18), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(255, 129, 92, 0.12), transparent 26%),
+        linear-gradient(145deg, rgba(38, 25, 27, 0.96), rgba(46, 29, 31, 0.92)) !important;
+}
+
+body.theme-graphite .hero-main h2,
+body.theme-graphite .hero-callout strong,
+body.theme-graphite .page-title h2,
+body.theme-graphite .panel-head h2,
+body.theme-graphite .summary-grid strong,
+body.theme-graphite .sensor-value strong,
+body.theme-graphite .log-reading-line b,
+body.theme-graphite .alert-item h3,
+body.theme-graphite .status-pill,
+body.theme-graphite .status-chip {
+    color: var(--text) !important;
+}
+
+body.theme-graphite .hero-main p,
+body.theme-graphite .hero-severity-text,
+body.theme-graphite .mini-kicker,
+body.theme-graphite .tile-bottom small,
+body.theme-graphite .alert-item p,
+body.theme-graphite td,
+body.theme-graphite th,
+body.theme-graphite .brief-text,
+body.theme-graphite .hint,
+body.theme-graphite .page-title p,
+body.theme-graphite .panel-head p,
+body.theme-graphite .rail-card,
+body.theme-graphite .connection-pill strong {
+    color: var(--soft) !important;
+}
+
+body.theme-graphite .connection-pill,
+body.theme-graphite .notify-pill,
+body.theme-graphite .select-pill,
+body.theme-graphite .ghost-btn,
+body.theme-graphite .big-notify,
+body.theme-graphite .search-box,
+body.theme-graphite .summary-grid > div,
+body.theme-graphite .quick-grid > div,
+body.theme-graphite .hero-callout,
+body.theme-graphite .reasons-panel,
+body.theme-graphite .severity-panel {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(239, 244, 223, 0.14) !important;
+}
+
+body.theme-graphite .alert-item.danger,
+body.theme-graphite .log-card.danger,
+body.theme-graphite .hero-reason-list li.danger {
+    background: rgba(255, 64, 82, 0.10) !important;
+    border-color: rgba(255, 64, 82, 0.28) !important;
+    color: #ffe2e6 !important;
+}
+
+body.theme-graphite .alert-item.warning,
+body.theme-graphite .log-card.warning,
+body.theme-graphite .hero-reason-list li.warning {
+    background: rgba(255, 191, 41, 0.11) !important;
+    border-color: rgba(255, 191, 41, 0.28) !important;
+    color: #fff2c7 !important;
+}
+
+body.theme-graphite .hero-reason-list li.safe,
+body.theme-graphite .log-card.safe {
+    background: rgba(53, 215, 142, 0.10) !important;
+    border-color: rgba(53, 215, 142, 0.24) !important;
+    color: #dcffee !important;
+}
+
+/* ---------- Theme mới: Ocean Night ---------- */
+body.theme-ocean {
+    --bg: #eaf4fb;
+    --bg-2: #cfe7f5;
+    --surface: rgba(255, 255, 255, 0.70);
+    --surface-solid: #f8fcff;
+    --surface-strong: rgba(255, 255, 255, 0.90);
+
+    --text: #173042;
+    --muted: #6b8594;
+    --soft: #496574;
+    --line: rgba(23, 48, 66, 0.10);
+
+    --accent: #1f8bd1;
+    --accent-2: #43b3a4;
+    --accent-3: #7cc7ff;
+    --deep: #0f2a3d;
+
+    --safe: #1fb980;
+    --warning: #f2ab2d;
+    --danger: #e84b5b;
+}
+
+/* ---------- Theme mới: Lavender Frost ---------- */
+body.theme-lavender {
+    --bg: #faf5ff;
+    --bg-2: #eedff9;
+    --surface: rgba(255, 255, 255, 0.72);
+    --surface-solid: #fffaff;
+    --surface-strong: rgba(255, 255, 255, 0.90);
+
+    --text: #342746;
+    --muted: #8b79a1;
+    --soft: #645675;
+    --line: rgba(52, 39, 70, 0.10);
+
+    --accent: #a15cf0;
+    --accent-2: #e18ac5;
+    --accent-3: #8e7dff;
+    --deep: #2a1838;
+
+    --safe: #33b985;
+    --warning: #f4b23b;
+    --danger: #eb5165;
+}
+
+/* ---------- Theme mới: Mocha Sand ---------- */
+body.theme-mocha {
+    --bg: #fbf3ea;
+    --bg-2: #e9d5c1;
+    --surface: rgba(255, 255, 255, 0.68);
+    --surface-solid: #fffaf5;
+    --surface-strong: rgba(255, 255, 255, 0.88);
+
+    --text: #35261d;
+    --muted: #8f7362;
+    --soft: #6f5647;
+    --line: rgba(53, 38, 29, 0.10);
+
+    --accent: #b46a3c;
+    --accent-2: #d29d58;
+    --accent-3: #c68d7c;
+    --deep: #291a13;
+
+    --safe: #2ca673;
+    --warning: #e2a629;
+    --danger: #d9534f;
+}
+
+/* ---------- Theme mới: Forest Mint ---------- */
+body.theme-forest {
+    --bg: #eef7f1;
+    --bg-2: #d2e9d8;
+    --surface: rgba(255, 255, 255, 0.72);
+    --surface-solid: #fbfffc;
+    --surface-strong: rgba(255, 255, 255, 0.90);
+
+    --text: #1e3528;
+    --muted: #6c8575;
+    --soft: #4f6b5b;
+    --line: rgba(30, 53, 40, 0.10);
+
+    --accent: #2ea86d;
+    --accent-2: #69c28f;
+    --accent-3: #8ad9bf;
+    --deep: #163022;
+
+    --safe: #22b573;
+    --warning: #e3aa2a;
+    --danger: #e25555;
+}
+
+/* ---------- Card / select / input readability cho theme mới ---------- */
+body.theme-ocean .panel,
+body.theme-lavender .panel,
+body.theme-mocha .panel,
+body.theme-forest .panel,
+body.theme-ocean .hero-card,
+body.theme-lavender .hero-card,
+body.theme-mocha .hero-card,
+body.theme-forest .hero-card,
+body.theme-ocean .sensor-tile,
+body.theme-lavender .sensor-tile,
+body.theme-mocha .sensor-tile,
+body.theme-forest .sensor-tile {
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 16px 34px rgba(60, 40, 20, 0.08);
+}
+
+body.theme-ocean .select-pill,
+body.theme-lavender .select-pill,
+body.theme-mocha .select-pill,
+body.theme-forest .select-pill,
+body.theme-ocean .notify-pill,
+body.theme-lavender .notify-pill,
+body.theme-mocha .notify-pill,
+body.theme-forest .notify-pill,
+body.theme-ocean .connection-pill,
+body.theme-lavender .connection-pill,
+body.theme-mocha .connection-pill,
+body.theme-forest .connection-pill,
+body.theme-ocean .ghost-btn,
+body.theme-lavender .ghost-btn,
+body.theme-mocha .ghost-btn,
+body.theme-forest .ghost-btn,
+body.theme-ocean .search-box,
+body.theme-lavender .search-box,
+body.theme-mocha .search-box,
+body.theme-forest .search-box {
+    background: rgba(255,255,255,0.76) !important;
+    border-color: color-mix(in srgb, var(--line) 74%, transparent) !important;
+    color: var(--text) !important;
+}
+
+/* =========================================================
+   THEME POLISH FINAL
+   Sửa lại màu cho dịu, dễ đọc, phối hợp đẹp hơn
+   Dán ở CUỐI style.css
+   ========================================================= */
+
+/* Màu trạng thái chung: bớt chói nhưng vẫn rõ */
+:root {
+    --safe: #18a66f;
+    --warning: #f2a900;
+    --danger: #ee3344;
+    --warning-dark: #9a6200;
+    --danger-dark: #9b1020;
+}
+
+/* =========================
+   TERRA CREAM - ấm, sạch
+   ========================= */
+body.theme-terra {
+    --bg: #fbf3e3;
+    --bg-2: #ead8bd;
+    --surface: rgba(255, 252, 244, 0.76);
+    --surface-solid: #fffaf1;
+    --surface-strong: rgba(255, 255, 255, 0.90);
+
+    --text: #252018;
+    --muted: #7f6a55;
+    --soft: #5f5144;
+    --line: rgba(70, 48, 26, 0.12);
+
+    --accent: #20866d;
+    --accent-2: #c97942;
+    --accent-3: #d9aa36;
+    --deep: #24372e;
+    --rail: rgba(46, 39, 31, 0.94);
+    --rail-text: #fff7e8;
+    --chart-grid: rgba(70, 48, 26, 0.10);
+}
+
+/* =========================
+   SAKURA MIST - hồng dịu hơn
+   ========================= */
+body.theme-sakura {
+    --bg: #fff4f3;
+    --bg-2: #f1d7d3;
+    --surface: rgba(255, 251, 250, 0.78);
+    --surface-solid: #fffafa;
+    --surface-strong: rgba(255, 255, 255, 0.92);
+
+    --text: #2b2026;
+    --muted: #83616b;
+    --soft: #624b53;
+    --line: rgba(86, 48, 60, 0.12);
+
+    --accent: #a94f67;
+    --accent-2: #c87852;
+    --accent-3: #6ea48b;
+    --deep: #442935;
+    --rail: rgba(67, 39, 50, 0.94);
+    --rail-text: #fff4f3;
+    --chart-grid: rgba(86, 48, 60, 0.10);
+}
+
+/* =========================
+   GRAPHITE LIME - tối nhưng dễ đọc hơn
+   ========================= */
+body.theme-graphite {
+    --bg: #111713;
+    --bg-2: #1d261d;
+    --surface: rgba(31, 39, 33, 0.86);
+    --surface-solid: #202920;
+    --surface-strong: rgba(39, 48, 40, 0.94);
+
+    --text: #f7f6e8;
+    --muted: #c2ccb8;
+    --soft: #e1e7d7;
+    --line: rgba(245, 248, 232, 0.15);
+
+    --accent: #8fdc6a;
+    --accent-2: #f0b66b;
+    --accent-3: #65d3b8;
+    --deep: #eff5df;
+    --rail: rgba(10, 14, 11, 0.95);
+    --rail-text: #f7f6e8;
+    --chart-grid: rgba(245, 248, 232, 0.12);
+
+    --safe: #38d58f;
+    --warning: #ffc247;
+    --danger: #ff4d5e;
+}
+
+/* =========================
+   OCEAN NIGHT - xanh biển dễ nhìn
+   ========================= */
+body.theme-ocean {
+    --bg: #eef8fc;
+    --bg-2: #cfe6f2;
+    --surface: rgba(255, 255, 255, 0.76);
+    --surface-solid: #f8fdff;
+    --surface-strong: rgba(255, 255, 255, 0.92);
+
+    --text: #193244;
+    --muted: #668393;
+    --soft: #4b6573;
+    --line: rgba(25, 50, 68, 0.11);
+
+    --accent: #247fbf;
+    --accent-2: #36a69b;
+    --accent-3: #77bdeb;
+    --deep: #123049;
+    --rail: rgba(18, 48, 73, 0.94);
+    --rail-text: #eef8fc;
+    --chart-grid: rgba(25, 50, 68, 0.10);
+}
+
+/* =========================
+   LAVENDER FROST - tím nhẹ, bớt lòe
+   ========================= */
+body.theme-lavender {
+    --bg: #fbf7ff;
+    --bg-2: #eadff6;
+    --surface: rgba(255, 255, 255, 0.78);
+    --surface-solid: #fffaff;
+    --surface-strong: rgba(255, 255, 255, 0.92);
+
+    --text: #332743;
+    --muted: #83729b;
+    --soft: #61536f;
+    --line: rgba(51, 39, 67, 0.11);
+
+    --accent: #8e5bd5;
+    --accent-2: #c878ae;
+    --accent-3: #7c82e8;
+    --deep: #2b1d3a;
+    --rail: rgba(43, 29, 58, 0.94);
+    --rail-text: #fbf7ff;
+    --chart-grid: rgba(51, 39, 67, 0.10);
+}
+
+/* =========================
+   MOCHA SAND - nâu ấm, sang hơn
+   ========================= */
+body.theme-mocha {
+    --bg: #fbf1e7;
+    --bg-2: #e5d0bd;
+    --surface: rgba(255, 250, 245, 0.76);
+    --surface-solid: #fffaf5;
+    --surface-strong: rgba(255, 255, 255, 0.90);
+
+    --text: #35271f;
+    --muted: #8b705f;
+    --soft: #6c5548;
+    --line: rgba(53, 39, 31, 0.11);
+
+    --accent: #a9673f;
+    --accent-2: #c89455;
+    --accent-3: #b87b70;
+    --deep: #2d1f18;
+    --rail: rgba(45, 31, 24, 0.94);
+    --rail-text: #fff3e7;
+    --chart-grid: rgba(53, 39, 31, 0.10);
+}
+
+/* =========================
+   FOREST MINT - xanh sạch, nhẹ mắt
+   ========================= */
+body.theme-forest {
+    --bg: #f0f8f1;
+    --bg-2: #d4e8d7;
+    --surface: rgba(255, 255, 255, 0.78);
+    --surface-solid: #fbfffc;
+    --surface-strong: rgba(255, 255, 255, 0.92);
+
+    --text: #1f3528;
+    --muted: #6c8373;
+    --soft: #4f6859;
+    --line: rgba(31, 53, 40, 0.11);
+
+    --accent: #2d9868;
+    --accent-2: #70b985;
+    --accent-3: #7fd1b8;
+    --deep: #173324;
+    --rail: rgba(23, 51, 36, 0.94);
+    --rail-text: #effbf3;
+    --chart-grid: rgba(31, 53, 40, 0.10);
+}
+
+/* =========================
+   Card / input readability chung
+   ========================= */
+body:not(.theme-graphite) .panel,
+body:not(.theme-graphite) .hero-card,
+body:not(.theme-graphite) .sensor-tile,
+body:not(.theme-graphite) .flow-card,
+body:not(.theme-graphite) .table-wrap {
+    background: linear-gradient(145deg, rgba(255,255,255,0.76), rgba(255,255,255,0.48)) !important;
+}
+
+body.theme-graphite .panel,
+body.theme-graphite .hero-card,
+body.theme-graphite .sensor-tile,
+body.theme-graphite .flow-card,
+body.theme-graphite .table-wrap,
+body.theme-graphite .summary-grid > div,
+body.theme-graphite .quick-grid > div {
+    background: linear-gradient(145deg, rgba(30, 39, 32, 0.96), rgba(38, 49, 40, 0.88)) !important;
+    border-color: rgba(245, 248, 232, 0.13) !important;
+}
+
+/* Đảm bảo chữ dễ đọc ở dark theme */
+body.theme-graphite .hero-main h2,
+body.theme-graphite .panel-head h2,
+body.theme-graphite .page-title h2,
+body.theme-graphite .sensor-value strong,
+body.theme-graphite .summary-grid strong,
+body.theme-graphite .quick-grid strong,
+body.theme-graphite .alert-item h3,
+body.theme-graphite .log-reading-line b {
+    color: var(--text) !important;
+}
+
+body.theme-graphite .hero-main p,
+body.theme-graphite .page-title p,
+body.theme-graphite .panel-head p,
+body.theme-graphite td,
+body.theme-graphite th,
+body.theme-graphite .tile-bottom small,
+body.theme-graphite .alert-item p,
+body.theme-graphite .hint {
+    color: var(--soft) !important;
+}
+
+/* Input / select / nút nhìn sạch hơn ở mọi theme */
+.search-box,
+.select-pill,
+.notify-pill,
+.connection-pill,
+.ghost-btn,
+.big-notify,
+.date-row input,
+.date-row button,
+.log-tools input,
+.log-tools select,
+.log-tools button,
+.threshold-form input,
+.threshold-form button,
+.sandbox-form button,
+#analysisMode,
+#analysisDate {
+    background: var(--surface-strong) !important;
+    border-color: color-mix(in srgb, var(--line) 85%, transparent) !important;
+    color: var(--text) !important;
+}
+
+/* Nút chính không dùng màu quá lệch theme */
+.notify-pill,
+.big-notify,
+.threshold-form button[type="submit"] {
+    background: linear-gradient(135deg, var(--deep), color-mix(in srgb, var(--deep) 76%, var(--accent))) !important;
+    color: var(--rail-text) !important;
+}
+
+/* Alert màu rõ nhưng không chói */
+.status-chip.danger,
+.alert-counter.danger,
+.status-pill.danger {
+    color: #fff !important;
+    background: linear-gradient(135deg, #ff5263, var(--danger)) !important;
+}
+
+.status-chip.warning,
+.alert-counter.warning,
+.status-pill.warning {
+    color: #3b2600 !important;
+    background: linear-gradient(135deg, #ffd66b, var(--warning)) !important;
+}
+
+.status-chip.safe,
+.alert-counter.safe,
+.status-pill.safe {
+    color: #fff !important;
+    background: linear-gradient(135deg, #3bd38f, var(--safe)) !important;
+}
+
+/* =========================================================
+   SETTINGS BUTTON FIX
+   Sửa nút Save settings / Reset default cho đẹp và dễ đọc
+   Dán ở CUỐI style.css
+   ========================================================= */
+
+/* Khung chứa 2 nút */
+.form-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    align-items: center !important;
+}
+
+/* Style chung cho 2 nút */
+.form-actions button {
+    width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 16px !important;
+    border-radius: 18px !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
+    flex: unset !important;
+    white-space: nowrap !important;
+}
+
+/* Nút Save settings */
+.threshold-form button[type="submit"] {
+    background: linear-gradient(135deg, var(--accent), var(--deep)) !important;
+    color: var(--rail-text) !important;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent) !important;
+    box-shadow: 0 12px 26px color-mix(in srgb, var(--accent) 18%, transparent) !important;
+}
+
+/* Nút Reset default */
+#resetSettingsBtn {
+    background: var(--surface-strong) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: none !important;
+}
+
+/* Hover nhẹ */
+.threshold-form button[type="submit"]:hover,
+#resetSettingsBtn:hover {
+    transform: translateY(-1px);
+}
+
+/* Riêng Graphite: sửa tương phản cho nút Save */
+body.theme-graphite .threshold-form button[type="submit"] {
+    background: linear-gradient(135deg, #2dd17f, #1a8f5a) !important;
+    color: #07120b !important;
+    border-color: rgba(45, 209, 127, 0.45) !important;
+}
+
+/* Riêng Graphite: reset nhìn rõ hơn */
+body.theme-graphite #resetSettingsBtn {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #f7f6e8 !important;
+    border-color: rgba(245, 248, 232, 0.18) !important;
+}
+
+/* Mobile: 2 nút nhỏ gọn, không bị phình */
+@media (max-width: 620px) {
+    .form-actions {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+
+    .form-actions button {
+        height: 44px !important;
+        min-height: 44px !important;
+        border-radius: 16px !important;
+        font-size: 13px !important;
+        padding: 0 10px !important;
+    }
+}
+
+/* =========================================================
+   GRAPHITE LIME - giảm màu ngoài bị át màu trong
+   Dán ở CUỐI style.css
+   ========================================================= */
+
+/* Safe compass / icon dịu hơn */
+body.theme-graphite .compass.safe {
+    background:
+        radial-gradient(circle at 50% 50%, rgba(245, 248, 228, 0.96) 0 34%, transparent 35%),
+        conic-gradient(
+            rgba(53, 215, 142, 0.78),
+            rgba(88, 209, 178, 0.72),
+            rgba(255, 191, 41, 0.62),
+            rgba(53, 215, 142, 0.74)
+        ) !important;
+    box-shadow:
+        inset 0 0 0 12px rgba(255, 255, 255, 0.10),
+        0 18px 36px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Phần ở giữa nổi rõ hơn */
+body.theme-graphite .compass.safe span {
+    background: linear-gradient(135deg, #e7efd1, #d9e6b8) !important;
+    color: #1b3a2b !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.45),
+        0 8px 18px rgba(0,0,0,0.12) !important;
+}
+
+/* Dấu check hoặc icon bên trong rõ hơn */
+body.theme-graphite .compass.safe #statusIcon {
+    color: #1f8f60 !important;
+}
+
+/* Pill "Safe to go outside" bớt tối */
+body.theme-graphite .hero-severity-text,
+body.theme-graphite .hero-callout,
+body.theme-graphite .quick-grid > div,
+body.theme-graphite .summary-grid > div {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(245, 248, 232, 0.14) !important;
+}
+
+/* Nút / pill safe sáng hơn để không bị chìm */
+body.theme-graphite .status-chip.safe,
+body.theme-graphite .alert-counter.safe,
+body.theme-graphite .status-pill.safe {
+    background: linear-gradient(135deg, #43dc97, #25b877) !important;
+    color: #08130c !important;
+    border-color: rgba(67, 220, 151, 0.35) !important;
+}
+
+/* Text của pill phụ rõ hơn */
+body.theme-graphite .hero-severity-text {
+    color: #eef6dd !important;
+}
+
+/* =========================================================
+   COLOR TUNE: make current theme look closer to image 1
+   Dán ở CUỐI style.css
+   ========================================================= */
+
+:root {
+    --safe: #27c983;
+    --warning: #f4b12d;
+    --danger: #ff3347;
+
+    --safe-soft: #dff8eb;
+    --warning-soft: #fff2cc;
+    --danger-soft: #ffe3e7;
+
+    --safe-dark: #118a58;
+    --warning-dark: #a96b00;
+    --danger-dark: #a20016;
+}
+
+/* =========================
+   HERO SAFE / WARNING / DANGER
+   ========================= */
+
+.hero-card.safe {
+    border-color: rgba(39, 201, 131, 0.28) !important;
+    background:
+        radial-gradient(circle at 16% 18%, rgba(39, 201, 131, 0.18), transparent 28%),
+        radial-gradient(circle at 84% 10%, rgba(85, 214, 170, 0.12), transparent 26%),
+        linear-gradient(145deg, rgba(245, 255, 249, 0.98), rgba(230, 249, 239, 0.90)) !important;
+    box-shadow: 0 24px 60px rgba(39, 201, 131, 0.10) !important;
+}
+
+.hero-card.warning {
+    border-color: rgba(244, 177, 45, 0.34) !important;
+    background:
+        radial-gradient(circle at 16% 18%, rgba(244, 177, 45, 0.20), transparent 28%),
+        radial-gradient(circle at 84% 10%, rgba(255, 194, 88, 0.12), transparent 26%),
+        linear-gradient(145deg, rgba(255, 251, 240, 0.98), rgba(255, 244, 214, 0.90)) !important;
+    box-shadow: 0 24px 60px rgba(244, 177, 45, 0.10) !important;
+}
+
+.hero-card.danger {
+    border-color: rgba(255, 51, 71, 0.34) !important;
+    background:
+        radial-gradient(circle at 16% 18%, rgba(255, 51, 71, 0.20), transparent 28%),
+        radial-gradient(circle at 84% 10%, rgba(255, 120, 120, 0.12), transparent 26%),
+        linear-gradient(145deg, rgba(255, 246, 247, 0.98), rgba(255, 229, 233, 0.92)) !important;
+    box-shadow: 0 24px 60px rgba(255, 51, 71, 0.12) !important;
+}
+
+/* =========================
+   MAIN ICON / COMPASS
+   ========================= */
+
+.compass.safe {
+    background:
+        radial-gradient(circle at 50% 50%, rgba(245, 255, 248, 1) 0 35%, transparent 36%),
+        conic-gradient(#8be7bf, #34d18b, #1ea766, #53d7a0, #8be7bf) !important;
+    box-shadow:
+        inset 0 0 0 14px rgba(227, 249, 238, 0.92),
+        0 20px 50px rgba(39, 201, 131, 0.18) !important;
+}
+
+.compass.warning {
+    background:
+        radial-gradient(circle at 50% 50%, rgba(255, 252, 240, 1) 0 35%, transparent 36%),
+        conic-gradient(#ffd76c, #f4b12d, #de8f14, #f6c047, #ffd76c) !important;
+    box-shadow:
+        inset 0 0 0 14px rgba(255, 245, 211, 0.94),
+        0 20px 50px rgba(244, 177, 45, 0.18) !important;
+}
+
+.compass.danger {
+    background:
+        radial-gradient(circle at 50% 50%, rgba(255, 248, 248, 1) 0 35%, transparent 36%),
+        conic-gradient(#ff8f9a, #ff3347, #b40018, #ea233b, #ff8f9a) !important;
+    box-shadow:
+        inset 0 0 0 14px rgba(255, 235, 238, 0.94),
+        0 20px 52px rgba(255, 51, 71, 0.20) !important;
+}
+
+.compass.safe span {
+    background: linear-gradient(135deg, #e9f8ef, #d9f1e4) !important;
+    color: var(--safe-dark) !important;
+}
+
+.compass.warning span {
+    background: linear-gradient(135deg, #fff2c7, #ffe6a6) !important;
+    color: var(--warning-dark) !important;
+}
+
+.compass.danger span {
+    background: linear-gradient(135deg, #4b0311, #240109) !important;
+    color: #fff4f5 !important;
+}
+
+/* =========================
+   STATUS PILLS / BADGES
+   ========================= */
+
+.status-chip.safe,
+.status-pill.safe,
+.alert-counter.safe {
+    background: linear-gradient(135deg, #46d996, #27c983) !important;
+    color: #ffffff !important;
+    border-color: rgba(39, 201, 131, 0.32) !important;
+    box-shadow: 0 10px 24px rgba(39, 201, 131, 0.16) !important;
+}
+
+.status-chip.warning,
+.status-pill.warning,
+.alert-counter.warning {
+    background: linear-gradient(135deg, #ffd86d, #f4b12d) !important;
+    color: #4a2d00 !important;
+    border-color: rgba(244, 177, 45, 0.34) !important;
+    box-shadow: 0 10px 24px rgba(244, 177, 45, 0.14) !important;
+}
+
+.status-chip.danger,
+.status-pill.danger,
+.alert-counter.danger {
+    background: linear-gradient(135deg, #ff5c6c, #ff3347) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 51, 71, 0.34) !important;
+    box-shadow: 0 10px 24px rgba(255, 51, 71, 0.16) !important;
+}
+
+/* =========================
+   SEVERITY / REASON PANELS
+   ========================= */
+
+.hero-card.safe .severity-panel,
+.hero-card.safe .reasons-panel,
+.hero-card.safe .hero-callout {
+    background: linear-gradient(145deg, rgba(255,255,255,0.88), rgba(234, 249, 240, 0.90)) !important;
+    border-color: rgba(39, 201, 131, 0.22) !important;
+}
+
+.hero-card.warning .severity-panel,
+.hero-card.warning .reasons-panel,
+.hero-card.warning .hero-callout {
+    background: linear-gradient(145deg, rgba(255,255,255,0.88), rgba(255, 244, 214, 0.92)) !important;
+    border-color: rgba(244, 177, 45, 0.24) !important;
+}
+
+.hero-card.danger .severity-panel,
+.hero-card.danger .reasons-panel,
+.hero-card.danger .hero-callout {
+    background: linear-gradient(145deg, rgba(255,255,255,0.88), rgba(255, 236, 239, 0.92)) !important;
+    border-color: rgba(255, 51, 71, 0.22) !important;
+}
+
+/* =========================
+   REASON LIST ITEMS
+   ========================= */
+
+.hero-reason-list li.safe {
+    background: rgba(223, 248, 235, 0.90) !important;
+    color: var(--safe-dark) !important;
+    border-color: rgba(39, 201, 131, 0.30) !important;
+    box-shadow: inset 6px 0 0 var(--safe);
+}
+
+.hero-reason-list li.warning {
+    background: rgba(255, 242, 204, 0.92) !important;
+    color: var(--warning-dark) !important;
+    border-color: rgba(244, 177, 45, 0.30) !important;
+    box-shadow: inset 6px 0 0 var(--warning);
+}
+
+.hero-reason-list li.danger {
+    background: rgba(255, 227, 231, 0.92) !important;
+    color: var(--danger-dark) !important;
+    border-color: rgba(255, 51, 71, 0.30) !important;
+    box-shadow: inset 6px 0 0 var(--danger);
+}
+
+/* =========================
+   SENSOR CARD STATE COLORS
+   ========================= */
+
+.sensor-tile.safe {
+    border-color: rgba(39, 201, 131, 0.34) !important;
+    background: linear-gradient(145deg, rgba(223, 248, 235, 0.28), rgba(255,255,255,0.86)) !important;
+}
+
+.sensor-tile.warning {
+    border-color: rgba(244, 177, 45, 0.38) !important;
+    background: linear-gradient(145deg, rgba(255, 242, 204, 0.30), rgba(255,255,255,0.86)) !important;
+}
+
+.sensor-tile.danger {
+    border-color: rgba(255, 51, 71, 0.38) !important;
+    background: linear-gradient(145deg, rgba(255, 227, 231, 0.30), rgba(255,255,255,0.86)) !important;
+}
+
