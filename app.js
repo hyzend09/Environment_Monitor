@@ -1,1452 +1,227 @@
 (() => {
-    "use strict";
-
-    const FIREBASE_HISTORY_PATH = "/IoT_Based_Environmental/history";
-    const TIME_ZONE = "Asia/Ho_Chi_Minh";
-    const STORAGE = {
-        theme: "terrapulse.theme.v1",
-        thresholds: "terrapulse.thresholds.v1",
-        notifications: "terrapulse.notifications.v1",
-        lastNotificationKey: "terrapulse.lastNotificationKey.v1",
-        lastNotificationTime: "terrapulse.lastNotificationTime.v1",
-        clearedAt: "terrapulse.alertsClearedAt.v1"
-    };
-
-    // const DEFAULT_THRESHOLDS = {
-    //     tempWarning: 35,
-    //     tempDanger: 40,
-    //     humidLowWarning: 40,
-    //     humidHighWarning: 80,
-    //     humidLowDanger: 25,
-    //     humidHighDanger: 90,
-    //     dustWarning: 50,
-    //     dustDanger: 70,
-    //     recordLimit: 600
-    // };
-
-    const DEFAULT_THRESHOLDS = {
-        tempWarning: 35,
-        tempDanger: 39,
-
-        humidLowWarning: 40,
-        humidHighWarning: 80,
-        humidLowDanger: 25,
-        humidHighDanger: 90,
-
-        dustWarning: 35,
-        dustDanger: 50,
-
-        recordLimit: 600
-    };
-
-    const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000;
-
-    const state = {
-        records: [],
-        latest: null,
-        previous: null,
-        filteredLogs: [],
-        chartMode: "latest",
-        selectedDate: "",
-        visibleLogs: 45,
-        firebaseConnected: false,
-        thresholds: loadThresholds(),
-        notificationsEnabled: localStorage.getItem(STORAGE.notifications) === "true",
-        alertsClearedAt: Number(localStorage.getItem(STORAGE.clearedAt)) || 0,
-        mainChart: null,
-        analysisChart: null,
-        statusChart: null,
-        toastTimer: null,
-        simulatedActive: false
-    };
-
-    const $ = (id) => document.getElementById(id);
-    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-
-    document.addEventListener("DOMContentLoaded", init);
-
-    function init() {
-        const savedTheme = localStorage.getItem(STORAGE.theme) || "terra";
-        applyTheme(savedTheme);
-        setDateInputs(todayKey());
-        fillSettingsForm();
-        syncRangeOutputs();
-        bindNavigation();
-        bindControls();
-        updateClock();
-        setInterval(updateClock, 1000);
-        setInterval(() => {
-            renderFreshness();
-            renderHealth();
-        }, 5000);
-        registerServiceWorker();
-        updateNotificationUi();
-        connectFirebase();
-        handleInitialHash();
-    }
-
-    function bindNavigation() {
-        [...$$(".nav-btn"), ...$$(".mobile-btn")].forEach((button) => {
-            button.addEventListener("click", () => setPage(button.dataset.page));
-        });
-    }
-
-    function setPage(page) {
-        document.body.classList.remove("page-home", "page-lab", "page-logs", "page-alerts", "page-guide", "page-settings");
-        document.body.classList.add(`page-${page}`);
-        $$('[data-panel]').forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === page));
-        [...$$(".nav-btn"), ...$$(".mobile-btn")].forEach((button) => button.classList.toggle("active", button.dataset.page === page));
-        if (page === "lab") renderLab();
-        if (page === "logs") renderLogs();
-        if (page === "alerts") renderAlerts();
-        location.hash = page === "home" ? "" : page;
-    }
-
-    function handleInitialHash() {
-        const hash = location.hash.replace("#", "");
-        if (["home", "lab", "logs", "alerts", "guide", "settings"].includes(hash)) {
-            setPage(hash);
-        }
-    }
-
-    function bindControls() {
-        $("themeSelect")?.addEventListener("change", (event) => applyTheme(event.target.value));
-        $("notifyBtn")?.addEventListener("click", enableNotifications);
-        $("notifyHeroBtn")?.addEventListener("click", enableNotifications);
-        $("copyBriefBtn")?.addEventListener("click", copyBrief);
-        $("clearAlertsBtn")?.addEventListener("click", clearViewedAlerts);
-        $("todayBtn")?.addEventListener("click", () => {
-            state.selectedDate = todayKey();
-            state.chartMode = "latest";
-            setDateInputs(state.selectedDate);
-            setActiveChartMode("latest");
-            renderAll();
-        });
-        $("datePicker")?.addEventListener("change", (event) => {
-            state.selectedDate = event.target.value || todayKey();
-            state.chartMode = "selected";
-            setDateInputs(state.selectedDate);
-            setActiveChartMode("selected");
-            renderAll();
-        });
-        $("analysisDate")?.addEventListener("change", (event) => {
-            state.selectedDate = event.target.value || todayKey();
-            setDateInputs(state.selectedDate);
-            renderLab();
-        });
-        $("analysisMode")?.addEventListener("change", renderLab);
-        $$('[data-chart-mode]').forEach((button) => {
-            button.addEventListener("click", () => {
-                state.chartMode = button.dataset.chartMode;
-                setActiveChartMode(state.chartMode);
-                renderCharts();
-            });
-        });
-        ["globalSearch", "logSearch", "statusFilter", "logDate", "sortMode"].forEach((id) => {
-            $(id)?.addEventListener("input", () => {
-                if (id === "globalSearch" && $("logSearch")) $("logSearch").value = $("globalSearch").value;
-                state.visibleLogs = 45;
-                renderLogs();
-            });
-            $(id)?.addEventListener("change", () => {
-                state.visibleLogs = 45;
-                renderLogs();
-            });
-        });
-        $("resetLogBtn")?.addEventListener("click", resetLogFilters);
-        $("loadMoreBtn")?.addEventListener("click", () => {
-            state.visibleLogs += 45;
-            renderLogs();
-        });
-        $("exportCsvBtn")?.addEventListener("click", exportCsv);
-        $("exportJsonBtn")?.addEventListener("click", exportJson);
-        $("thresholdForm")?.addEventListener("submit", (event) => {
-            event.preventDefault();
-            saveSettings();
-        });
-        $("resetSettingsBtn")?.addEventListener("click", resetSettings);
-        ["simTemp", "simHumid", "simDust"].forEach((id) => {
-            $(id)?.addEventListener("input", syncRangeOutputs);
-        });
-        $("simulateBtn")?.addEventListener("click", simulateRecord);
-    }
-
-    function connectFirebase() {
-        if (!window.database) {
-            setConnection(false, "Firebase config missing");
-            toast("Không tìm thấy window.database. Giữ nguyên firebase-config.js và kiểm tra thứ tự script.");
-            return;
-        }
-
-        try {
-            window.database.ref(".info/connected").on("value", (snapshot) => {
-                state.firebaseConnected = snapshot.val() === true;
-                setConnection(state.firebaseConnected, state.firebaseConnected ? "Firebase connected" : "Firebase offline");
-                renderHealth();
-            });
-
-            window.database
-                .ref(FIREBASE_HISTORY_PATH)
-                .limitToLast(Number(state.thresholds.recordLimit) || DEFAULT_THRESHOLDS.recordLimit)
-                .on("value", (snapshot) => {
-                    const nextRecords = [];
-                    snapshot.forEach((child) => {
-                        const normalized = normalizeRecord(child.val(), child.key);
-                        if (normalized) nextRecords.push(normalized);
-                    });
-
-                    nextRecords.sort((a, b) => timeMs(a.timestamp) - timeMs(b.timestamp));
-                    state.records = nextRecords;
-                    state.latest = nextRecords.at(-1) || null;
-                    state.previous = nextRecords.at(-2) || null;
-                    state.simulatedActive = false;
-                    setConnection(true, "Firebase connected");
-                    renderAll();
-                    maybeNotifyLatest();
-                }, (error) => {
-                    setConnection(false, "Read failed");
-                    toast(`Firebase read failed: ${error.message || error}`);
-                    if (state.records.length === 0) renderDemoFallback();
-                });
-        } catch (error) {
-            setConnection(false, "Firebase error");
-            toast(`Không kết nối được Firebase: ${error.message || error}`);
-            renderDemoFallback();
-        }
-    }
-
-
-    // function normalizeRecord(raw, key) {
-    //     if (!raw || typeof raw !== "object") return null;
-
-    //     const numericKey = Number(key);
-    //     const timestamp = raw.timestamp ?? raw.time ?? raw.createdAt ?? raw.created_at ?? (Number.isFinite(numericKey) ? numericKey : Date.now());
-    //     const temp = toNumber(raw.nhiet_do ?? raw.temperature ?? raw.temp ?? raw.t);
-    //     const humid = toNumber(raw.do_am ?? raw.humidity ?? raw.humid ?? raw.h);
-    //     const dust = toNumber(raw.bui ?? raw.pm25 ?? raw.pm2_5 ?? raw.dust ?? raw.pm);
-    //     const analysis = analyzeRecord(temp, humid, dust);
-
-    //     return {
-    //         key: key || String(timestamp),
-    //         timestamp,
-    //         nhiet_do: temp,
-    //         do_am: humid,
-    //         bui: dust,
-    //         status: analysis.status,
-    //         severity: analysis.severity,
-    //         icon: analysis.icon,
-    //         note: analysis.note,
-    //         reasons: analysis.reasons,
-    //         shortReason: analysis.shortReason,
-    //         issueMap: analysis.issueMap,
-    //         readingsText: analysis.readingsText,
-    //         raw
-    //     };
-    // }
-
-    function normalizeRecord(raw, key) {
-        if (!raw || typeof raw !== "object") return null;
-
-        const numericKey = Number(key);
-
-        const timestamp =
-            raw.timestamp ??
-            raw.time ??
-            raw.createdAt ??
-            raw.created_at ??
-            (Number.isFinite(numericKey) ? numericKey : Date.now());
-
-        const temp = toNumber(
-            raw.nhiet_do ??
-            raw.temperature ??
-            raw.temp ??
-            raw.t
-        );
-
-        const humid = toNumber(
-            raw.do_am ??
-            raw.humidity ??
-            raw.humid ??
-            raw.h
-        );
-
-        // Firebase lưu dữ liệu bụi bằng field "bui"
-        const dust = toNumber(
-            raw.bui ??
-            raw.pm25 ??
-            raw.pm2_5 ??
-            raw.dust ??
-            raw.pm
-        );
-
-        const analysis = analyzeRecord(temp, humid, dust);
-
-        return {
-            key: key || String(timestamp),
-            timestamp: timestamp,
-
-            nhiet_do: temp,
-            do_am: humid,
-            bui: dust,
-
-            status: analysis.status,
-            severity: analysis.severity,
-            icon: analysis.icon,
-            note: analysis.note,
-            reasons: analysis.reasons,
-            shortReason: analysis.shortReason,
-            issueMap: analysis.issueMap,
-            readingsText: analysis.readingsText,
-
-            raw: raw
-        };
-    }
-
-    function analyzeRecord(temp, humid, dust) {
-        const t = state.thresholds;
-        const issues = [];
-        const issueMap = {
-            temp: "Temperature is stable.",
-            humid: "Humidity is balanced.",
-            dust: "Air quality is clean."
-        };
-
-        const addIssue = (status, metric, direction, text, sensorText) => {
-            issues.push({ status, metric, direction, text, sensorText });
-            if (metric === "temp") issueMap.temp = sensorText;
-            if (metric === "humid") issueMap.humid = sensorText;
-            if (metric === "dust") issueMap.dust = sensorText;
-        };
-
-        if (temp >= t.tempDanger) addIssue("danger", "temp", "high", `Temperature is dangerously high at ${fmt(temp)}°C.`, "Temperature is dangerously high.");
-        else if (temp > t.tempWarning) addIssue("warning", "temp", "high", `Temperature is getting high at ${fmt(temp)}°C.`, "Temperature is getting high.");
-
-        if (humid >= t.humidHighDanger) addIssue("danger", "humid", "high", `Humidity is dangerously high at ${fmt(humid)}%.`, "Humidity is dangerously high.");
-        else if (humid <= t.humidLowDanger) addIssue("danger", "humid", "low", `Humidity is dangerously low at ${fmt(humid)}%.`, "Humidity is dangerously low.");
-        else if (humid >= t.humidHighWarning) addIssue("warning", "humid", "high", `Humidity is getting high at ${fmt(humid)}%.`, "Humidity is getting high.");
-        else if (humid <= t.humidLowWarning) addIssue("warning", "humid", "low", `Humidity is getting low at ${fmt(humid)}%.`, "Humidity is getting low.");
-
-        if (dust >= t.dustDanger) addIssue("danger", "dust", "high", `Dust level is dangerously high at ${fmt(dust)}.`, "Dust level is dangerously high.");
-        else if (dust >= t.dustWarning) addIssue("warning", "dust", "high", `Dust level is getting high at ${fmt(dust)}.`, "Dust level is getting high.");
-
-        const readingsText = `Current readings: ${fmt(temp)}°C temperature, ${fmt(humid)}% humidity, ${fmt(dust)} dust.`;
-        const hasDanger = issues.some((i) => i.status === "danger");
-
-        if (hasDanger) {
-            const reasons = issues.filter((i) => i.status === "danger").map((i) => i.text);
-            return {
-                status: "danger",
-                severity: 2,
-                icon: "!",
-                note: `Environment danger. ${readingsText}`,
-                reasons,
-                shortReason: reasons.join(" "),
-                issueMap,
-                readingsText
-            };
-        }
-
-        if (issues.length) {
-            const reasons = issues.map((i) => i.text);
-            return {
-                status: "warning",
-                severity: 1,
-                icon: "⚠",
-                note: `Environment warning. ${readingsText}`,
-                reasons,
-                shortReason: reasons.join(" "),
-                issueMap,
-                readingsText
-            };
-        }
-
-        return {
-            status: "safe",
-            severity: 0,
-            icon: "✓",
-            note: `Environment safe. ${readingsText}`,
-            reasons: [`Environment safe. Temperature ${fmt(temp)}°C is stable, humidity ${fmt(humid)}% is balanced, and dust ${fmt(dust)} indicates clean air.`],
-            shortReason: `Environment safe. Temperature is stable, humidity is balanced, and the air is clean.`,
-            issueMap,
-            readingsText
-        };
-    }
-
-    function renderAll() {
-        renderOverview();
-        renderSummary();
-        renderCharts();
-        renderHealth();
-        renderLogs();
-        renderAlerts();
-        renderLab();
-        renderFreshness();
-    }
-
-    function stateHeadline(status) {
-        return status === "danger" ? "Environment Danger" : status === "warning" ? "Environment Warning" : "Environment Safe";
-    }
-
-    function statePillText(status) {
-        return status === "danger" ? "DANGER" : status === "warning" ? "WARNING" : "SAFE";
-    }
-
-    function briefStatusText(status) {
-        return status === "danger" ? "Immediate action needed" : status === "warning" ? "Needs attention" : "Safe to go outside";
-    }
-
-    function buildSafetyAdvice(record) {
-        if (!record) return "Waiting for environmental data.";
-
-        const reasons = (record.reasons || []).join(" ").toLowerCase();
-        const hasTemp = reasons.includes("temperature");
-        const hasDust = reasons.includes("dust");
-        const hasHumid = reasons.includes("humidity");
-        const hasHumidLow = hasHumid && reasons.includes("low");
-        const hasHumidHigh = hasHumid && reasons.includes("high");
-
-        if (record.status === "safe") {
-            return "The environment is safe. You can go outside and enjoy fresh air normally.";
-        }
-
-        if (record.status === "warning") {
-            const advice = ["The environment needs attention."];
-            if (hasTemp) advice.push("Temperature is getting high, so avoid staying too long under direct sunlight and drink enough water.");
-            if (hasHumidLow) advice.push("Humidity is getting low, so drink more water and avoid staying in very dry air for too long.");
-            if (hasHumidHigh) advice.push("Humidity is getting high, so keep the area airy and ventilated.");
-            if (hasDust) advice.push("Dust level is getting high, so limit long outdoor activity and consider wearing a mask.");
-            advice.push("You can still go outside, but monitor the environment closely.");
-            return advice.join(" ");
-        }
-
-        if (record.status === "danger") {
-            const advice = ["The environment is dangerous."];
-            if (hasTemp) advice.push("Stay indoors if possible, avoid direct sunlight, and cool the room immediately.");
-            if (hasHumidLow) advice.push("Humidity is dangerously low, so use a humidifier if available and avoid dry air exposure.");
-            if (hasHumidHigh) advice.push("Humidity is dangerously high, so stay in a ventilated place and reduce exposure to damp air.");
-            if (hasDust) advice.push("Air quality is unhealthy, so avoid going outside unless necessary, keep windows closed, and wear a mask if you must go out.");
-            advice.push("Check the sensor area and the real environment immediately.");
-            return advice.join(" ");
-        }
-
-        return "Waiting for environmental data.";
-    }
-
-    function renderOverview() {
-        const latest = state.latest;
-        const previous = state.previous;
-        setText("recordLoaded", `${state.records.length}`);
-
-        if (!latest) {
-            setText("mainStatus", "Waiting for data");
-            setText("mainNote", "Đang chờ dữ liệu realtime từ Firebase.");
-            setText("lastUpdate", "--");
-            setStatusUi("safe", "SAFE", "✓");
-            updateHeroFocus({ status: "safe", reasons: ["Waiting for incoming Firebase data..."], note: "No threshold is exceeded at the moment.", readingsText: "" });
-            renderMetric("temp", null, null, "Waiting", "--");
-            renderMetric("humid", null, null, "Waiting", "--");
-            renderMetric("dust", null, null, "Waiting", "--");
-            setText("briefText", "Waiting for Firebase data. A summary will appear here as soon as new readings arrive.");
-            setHtml("recommendationList", `<div class="recommendation safe">✓ System is ready.</div>`);
-            return;
-        }
-
-        const statusLabel = statePillText(latest.status);
-        setStatusUi(latest.status, statusLabel, latest.icon);
-        setText("mainStatus", stateHeadline(latest.status));
-        setText("mainNote", latest.note);
-        setText("lastUpdate", formatDateTime(latest.timestamp));
-        updateHeroFocus(latest);
-
-        renderMetric("temp", latest.nhiet_do, previous?.nhiet_do, getSingleLevel("temp", latest.nhiet_do), latest.issueMap?.temp || "Temperature is stable.");
-        renderMetric("humid", latest.do_am, previous?.do_am, getSingleLevel("humid", latest.do_am), latest.issueMap?.humid || "Humidity is balanced.");
-        renderMetric("dust", latest.bui, previous?.bui, getSingleLevel("dust", latest.bui), latest.issueMap?.dust || "Air quality is clean.");
-        renderBrief();
-        renderMiniAlerts();
-    }
-
-    function updateHeroFocus(latest) {
-        const reasons = Array.isArray(latest?.reasons) && latest.reasons.length
-            ? latest.reasons
-            : ["Environment safe. Temperature is stable, humidity is balanced, and air quality is clean."];
-        const count = latest?.status === "safe" ? 0 : reasons.length;
-        const plural = count === 1 ? "" : "s";
-
-        const title = latest?.status === "danger"
-            ? "Immediate action needed"
-            : latest?.status === "warning"
-                ? "Monitor this area"
-                : "Safe environment";
-
-        // const note = latest?.status === "danger"
-        //     ? `${count} danger condition${plural} detected. ${latest.readingsText || ""}`.trim()
-        //     : latest?.status === "warning"
-        //         ? `${count} warning condition${plural} detected. ${latest.readingsText || ""}`.trim()
-        //         : latest?.readingsText || "Environment safe. Temperature is stable, humidity is balanced, and air quality is clean.";
-        const note = buildSafetyAdvice(latest);
-
-        setText("heroSeverityTitle", title);
-        setText("heroSeverityNote", note);
-        setText("heroSeverityText", briefStatusText(latest?.status || "safe"));
-
-        const counter = $("heroAlertCount");
-        if (counter) {
-            counter.classList.remove("safe", "warning", "danger");
-            counter.classList.add(latest?.status || "safe");
-            counter.textContent = latest?.status === "safe" ? "Environment safe" : `${count} active alert${plural}`;
-        }
-
-        setHtml("heroReasonList", reasons.map((reason) => `<li class="${escapeHtml(latest?.status || "safe")}">${escapeHtml(reason)}</li>`).join(""));
-    }
-
-    function setStatusUi(status, label, icon) {
-        const chip = $("mainStatusChip");
-        const compass = $("statusCompass");
-        const hero = $("heroCard");
-        [chip, compass, hero].forEach((el) => {
-            if (!el) return;
-            el.classList.remove("safe", "warning", "danger");
-            el.classList.add(status);
-        });
-        setText("mainStatusChip", label);
-        setText("statusIcon", icon);
-    }
-
-    function renderMetric(name, value, previousValue, level, reason) {
-        const isEmpty = value === null || value === undefined || !Number.isFinite(Number(value));
-        const number = isEmpty ? null : Number(value);
-        const status = level?.status || "safe";
-        const tile = $(`${name}Tile`);
-        const bar = $(`${name}Bar`);
-        const valueEl = $(`${name}Value`);
-        const trendEl = $(`${name}Trend`);
-        const levelEl = $(`${name}Level`);
-        const reasonEl = $(`${name}Reason`);
-        const metricColor = levelColor(status);
-
-        if (tile) {
-            tile.classList.remove("safe", "warning", "danger");
-            tile.classList.add(status);
-            tile.dataset.status = status;
-            tile.style.setProperty("--metric-color", metricColor);
-        }
-
-        setText(valueEl, isEmpty ? "--" : fmt(number));
-        setText(levelEl, level?.label || "Waiting");
-        setText(reasonEl, reason || "--");
-
-        [valueEl, trendEl, levelEl, reasonEl].forEach((el) => {
-            if (el) el.style.color = metricColor;
-        });
-
-        const percent = name === "temp" ? clamp((number / 55) * 100, 0, 100)
-            : name === "humid" ? clamp(number, 0, 100)
-                : clamp((number / 120) * 100, 0, 100);
-        if (bar) {
-            bar.style.width = isEmpty ? "0%" : `${percent}%`;
-            bar.style.background = status === "danger"
-                ? "linear-gradient(90deg, #ff9a87, #f2644d, #dc3f35)"
-                : status === "warning"
-                    ? "linear-gradient(90deg, #f2cf57, #e8ad37, #dc8c1d)"
-                    : "linear-gradient(90deg, #79c9a3, #39b27d, #159565)";
-        }
-
-        setText(trendEl, getTrend(number, previousValue));
-    }
-
-    function levelColor(status) {
-        const styles = getComputedStyle(document.body);
-        if (status === "danger") return styles.getPropertyValue("--danger").trim() || "#df5b4f";
-        if (status === "warning") return styles.getPropertyValue("--warning").trim() || "#d8941d";
-        return styles.getPropertyValue("--safe").trim() || "#2f9e6d";
-    }
-
-    function getSingleLevel(type, value) {
-        const v = Number(value);
-        const t = state.thresholds;
-        if (!Number.isFinite(v)) return { status: "safe", label: "Waiting" };
-
-        if (type === "temp") {
-            if (v >= t.tempDanger) return { status: "danger", label: "Danger" };
-            if (v > t.tempWarning) return { status: "warning", label: "Warning" };
-            return { status: "safe", label: "Safe" };
-        }
-        if (type === "humid") {
-            if (v >= t.humidHighDanger || v <= t.humidLowDanger) return { status: "danger", label: "Danger" };
-            if (v >= t.humidHighWarning || v <= t.humidLowWarning) return { status: "warning", label: "Warning" };
-            return { status: "safe", label: "Safe" };
-        }
-        if (v >= t.dustDanger) return { status: "danger", label: "Danger" };
-        if (v >= t.dustWarning) return { status: "warning", label: "Warning" };
-        return { status: "safe", label: "Safe" };
-    }
-
-    function getTrend(current, previous) {
-        if (!Number.isFinite(Number(current)) || !Number.isFinite(Number(previous))) return "--";
-        const diff = Number(current) - Number(previous);
-        if (Math.abs(diff) < 0.1) return "stable";
-        return diff > 0 ? `↑ ${fmt(diff)}` : `↓ ${fmt(Math.abs(diff))}`;
-    }
-
-    function renderBrief() {
-        const latest = state.latest;
-        if (!latest) return;
-        const lastRecords = state.records.slice(-6);
-        const tempTrend = trendDirection(lastRecords.map((r) => r.nhiet_do));
-        const humidTrend = trendDirection(lastRecords.map((r) => r.do_am));
-        const dustTrend = trendDirection(lastRecords.map((r) => r.bui));
-
-        const brief = latest.status === "safe"
-            ? latest.reasons[0]
-            : `${stateHeadline(latest.status)}. ${latest.shortReason} ${buildSafetyAdvice(latest)}`;
-        setText("briefText", brief.trim());
-
-        const items = [
-            makeRecommendation(tempTrend, "Temperature"),
-            makeRecommendation(humidTrend, "Humidity"),
-            makeRecommendation(dustTrend, "Dust"),
-            { status: latest.status, text: buildSafetyAdvice(latest) }
-        ];
-
-        setHtml("recommendationList", items.map((item) => `<div class="recommendation ${item.status}">${escapeHtml(item.text)}</div>`).join(""));
-    }
-
-    function makeRecommendation(direction, label) {
-        if (direction === "up") return { status: label === "Dust" ? "warning" : "safe", text: `${label} is trending upward.` };
-        if (direction === "down") return { status: "safe", text: `${label} is trending downward.` };
-        return { status: "safe", text: `${label} is stable.` };
-    }
-
-    function trendDirection(values) {
-        const clean = values.filter((v) => Number.isFinite(Number(v))).map(Number);
-        if (clean.length < 3) return "stable";
-        const first = clean.slice(0, Math.ceil(clean.length / 2)).reduce((a, b) => a + b, 0) / Math.ceil(clean.length / 2);
-        const second = clean.slice(Math.floor(clean.length / 2)).reduce((a, b) => a + b, 0) / clean.slice(Math.floor(clean.length / 2)).length;
-        if (second - first > 1) return "up";
-        if (first - second > 1) return "down";
-        return "stable";
-    }
-
-    function renderSummary() {
-        const date = state.selectedDate || todayKey();
-        setText("summaryTitle", formatDateKey(date));
-        const dayRecords = recordsByDate(date);
-        setText("dailyCount", dayRecords.length);
-
-        if (dayRecords.length === 0) {
-            ["avgTemp", "avgHumid", "avgDust", "maxTemp", "minTemp"].forEach((id) => setText(id, "--"));
-            setText("dangerCount", "0");
-            setText("warningCount", "0");
-            return;
-        }
-
-        const temps = dayRecords.map((r) => r.nhiet_do);
-        const humids = dayRecords.map((r) => r.do_am);
-        const dusts = dayRecords.map((r) => r.bui);
-        setText("avgTemp", `${fmt(avg(temps))}°C`);
-        setText("avgHumid", `${fmt(avg(humids))}%`);
-        setText("avgDust", fmt(avg(dusts)));
-        setText("maxTemp", `${fmt(Math.max(...temps))}°C`);
-        setText("minTemp", `${fmt(Math.min(...temps))}°C`);
-        setText("dangerCount", dayRecords.filter((r) => r.status === "danger").length);
-        setText("warningCount", dayRecords.filter((r) => r.status === "warning").length);
-    }
-
-    function renderCharts() {
-        const data = getChartData(state.chartMode);
-        const labels = data.map((r) => r.label || (state.chartMode === "daily" ? formatDateKey(dateKey(r.timestamp)) : formatTimeShort(r.timestamp)));
-        const colors = cssColors();
-
-        setText("chartCaption", state.chartMode === "daily" ? "Mỗi điểm là giá trị trung bình của một ngày."
-            : state.chartMode === "selected" ? `Chi tiết dữ liệu ngày ${formatDateKey(state.selectedDate)}.`
-                : "Latest records from Firebase.");
-
-        const config = {
-            type: "line",
-            data: {
-                labels,
-                datasets: [
-                    dataset("Temperature", data.map((r) => r.nhiet_do), colors.temp),
-                    dataset("Humidity", data.map((r) => r.do_am), colors.humid),
-                    dataset("Dust", data.map((r) => r.bui), colors.dust)
-                ]
-            },
-            options: chartOptions(colors)
-        };
-
-        state.mainChart = updateChart(state.mainChart, "mainChart", config);
-    }
-
-    function renderLab() {
-        const pageActive = $("page-lab")?.classList.contains("active");
-        const mode = $("analysisMode")?.value || "latest";
-        const data = getChartData(mode);
-        const labels = data.map((r) => r.label || (mode === "daily" ? formatDateKey(dateKey(r.timestamp)) : formatTimeShort(r.timestamp)));
-        const colors = cssColors();
-
-        const config = {
-            type: "bar",
-            data: {
-                labels,
-                datasets: [
-                    dataset("Temperature", data.map((r) => r.nhiet_do), colors.temp, "bar"),
-                    dataset("Humidity", data.map((r) => r.do_am), colors.humid, "bar"),
-                    dataset("Dust", data.map((r) => r.bui), colors.dust, "bar")
-                ]
-            },
-            options: chartOptions(colors, true)
-        };
-        state.analysisChart = updateChart(state.analysisChart, "analysisChart", config);
-        renderStatusChart();
-        renderPatternNotes();
-        if (!pageActive) return;
-    }
-
-    function renderStatusChart() {
-        const colors = cssColors();
-        const counts = countStatuses(state.records);
-        const config = {
-            type: "doughnut",
-            data: {
-                labels: ["Safe", "Warning", "Danger"],
-                datasets: [{
-                    data: [counts.safe, counts.warning, counts.danger],
-                    backgroundColor: [colors.safe, colors.warning, colors.danger],
-                    borderWidth: 0,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                cutout: "70%"
-            }
-        };
-        state.statusChart = updateChart(state.statusChart, "statusChart", config);
-        const total = Math.max(1, counts.safe + counts.warning + counts.danger);
-        setHtml("ratioLegend", [
-            ["Safe", counts.safe, "safe"],
-            ["Warning", counts.warning, "warning"],
-            ["Danger", counts.danger, "danger"]
-        ].map(([label, count, cls]) => `<div><span class="status-pill ${cls}">${label}</span><strong>${count} (${Math.round(count / total * 100)}%)</strong></div>`).join(""));
-    }
-
-    function renderPatternNotes() {
-        if (state.records.length === 0) {
-            setHtml("patternNotes", `<div class="pattern-note warning">No data available for pattern detection.</div>`);
-            return;
-        }
-        const recent = state.records.slice(-10);
-        const dangers = recent.filter((r) => r.status === "danger").length;
-        const warnings = recent.filter((r) => r.status === "warning").length;
-        const notes = [];
-        if (dangers > 0) notes.push({ status: "danger", text: `${dangers} danger record(s) appeared in the latest 10 readings.` });
-        if (warnings > 0) notes.push({ status: "warning", text: `${warnings} warning record(s) appeared in the latest 10 readings.` });
-        notes.push(makeRecommendation(trendDirection(recent.map((r) => r.nhiet_do)), "Temperature"));
-        notes.push(makeRecommendation(trendDirection(recent.map((r) => r.do_am)), "Humidity"));
-        notes.push(makeRecommendation(trendDirection(recent.map((r) => r.bui)), "Dust"));
-        setHtml("patternNotes", notes.map((n) => `<div class="pattern-note ${n.status}">${escapeHtml(n.text)}</div>`).join(""));
-    }
-
-    function getChartData(mode) {
-        if (mode === "daily") return dailyAverages(state.records);
-        if (mode === "selected") return recordsByDate(state.selectedDate).slice(-120);
-        return state.records.slice(-80);
-    }
-
-    function dataset(label, data, color, type = "line") {
-        return {
-            type,
-            label,
-            data,
-            borderColor: color,
-            backgroundColor: alpha(color, type === "bar" ? 0.5 : 0.16),
-            tension: 0.42,
-            borderWidth: 3,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            fill: type !== "bar"
-        };
-    }
-
-    function chartOptions(colors, stacked = false) {
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: "index", intersect: false },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: colors.text,
-                        usePointStyle: true,
-                        boxWidth: 8,
-                        font: { weight: "700" }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: colors.tooltip,
-                    titleColor: colors.tooltipText,
-                    bodyColor: colors.tooltipText,
-                    borderColor: colors.grid,
-                    borderWidth: 1,
-                    padding: 12
-                }
-            },
-            scales: {
-                x: {
-                    grid: { color: colors.grid },
-                    ticks: { color: colors.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
-                },
-                y: {
-                    beginAtZero: true,
-                    suggestedMax: 100,
-                    stacked,
-                    grid: { color: colors.grid },
-                    ticks: { color: colors.muted }
-                }
-            }
-        };
-    }
-
-    function updateChart(instance, canvasId, config) {
-        const canvas = $(canvasId);
-        if (!canvas || !window.Chart) return instance;
-        if (instance) {
-            instance.data = config.data;
-            instance.options = config.options;
-            instance.update();
-            return instance;
-        }
-        return new Chart(canvas, config);
-    }
-
-    function buildLogReason(record) {
-        if (!record) return "--";
-        if (record.status === "safe") return record.shortReason || "Environment safe. Temperature is stable, humidity is balanced, and air quality is clean.";
-        const reasons = (record.reasons || []).slice(0, 2).join(" ");
-        return `${stateHeadline(record.status)}. ${reasons}`.trim();
-    }
-
-    function renderLogs() {
-        const rows = getFilteredLogs();
-        state.filteredLogs = rows;
-        const visible = rows.slice(0, state.visibleLogs);
-        setHtml("logTableBody", visible.map((r) => `
-            <tr class="log-row ${r.status}">
-                <td>${escapeHtml(formatDateTime(r.timestamp))}</td>
-                <td><span class="status-pill ${r.status}">${statePillText(r.status)}</span></td>
-                <td>${fmt(r.nhiet_do)}°C</td>
-                <td>${fmt(r.do_am)}%</td>
-                <td>${fmt(r.bui)}</td>
-                <td>${escapeHtml(buildLogReason(r))}</td>
-            </tr>
-        `).join(""));
-
-        setHtml("logCards", visible.map((r) => `
-            <article class="log-card ${r.status}">
-                <div class="log-card-head">
-                    <span class="status-pill ${r.status}">${statePillText(r.status)}</span>
-                    <small>${escapeHtml(formatDateTime(r.timestamp))}</small>
-                </div>
-                <div class="log-reading-line"><b>${fmt(r.nhiet_do)}°C</b><b>${fmt(r.do_am)}%</b><b>${fmt(r.bui)}</b></div>
-                <p>${escapeHtml(buildLogReason(r))}</p>
-            </article>
-        `).join(""));
-
-        const btn = $("loadMoreBtn");
-        if (btn) btn.style.display = rows.length > state.visibleLogs ? "inline-flex" : "none";
-    }
-
-    function getFilteredLogs() {
-        let rows = [...state.records];
-        const search = ($("logSearch")?.value || $("globalSearch")?.value || "").trim().toLowerCase();
-        const status = $("statusFilter")?.value || "all";
-        const date = $("logDate")?.value || "";
-        const sort = $("sortMode")?.value || "newest";
-
-        if (search) {
-            rows = rows.filter((r) => [r.status, r.note, r.reasons.join(" "), formatDateTime(r.timestamp), r.nhiet_do, r.do_am, r.bui]
-                .join(" ").toLowerCase().includes(search));
-        }
-        if (status !== "all") rows = rows.filter((r) => r.status === status);
-        if (date) rows = rows.filter((r) => dateKey(r.timestamp) === date);
-
-        rows.sort((a, b) => {
-            if (sort === "oldest") return timeMs(a.timestamp) - timeMs(b.timestamp);
-            if (sort === "temp-high") return b.nhiet_do - a.nhiet_do;
-            if (sort === "dust-high") return b.bui - a.bui;
-            return timeMs(b.timestamp) - timeMs(a.timestamp);
-        });
-        return rows;
-    }
-
-    function renderAlerts() {
-        const alerts = state.records
-            .filter((r) => r.status !== "safe" && timeMs(r.timestamp) > state.alertsClearedAt)
-            .sort((a, b) => timeMs(b.timestamp) - timeMs(a.timestamp));
-        const allActiveAlerts = state.records.filter((r) => r.status !== "safe");
-        const visibleAlerts = alerts.slice(0, 8);
-        setText("sideAlertBadge", allActiveAlerts.length);
-        setText("mobileAlertBadge", allActiveAlerts.length);
-
-        setHtml("alertList", visibleAlerts.map((r) => `
-            <article class="alert-item ${r.status}">
-                <div class="alert-icon">${r.status === "danger" ? "!" : "⚠"}</div>
-                <div class="alert-content">
-                    <div class="alert-topline">
-                        <h3>${stateHeadline(r.status)}</h3>
-                        <span class="status-pill ${r.status}">${statePillText(r.status)}</span>
-                    </div>
-                    <p>${escapeHtml(buildLogReason(r))}</p>
-                    <div class="alert-meta">
-                        <span>${escapeHtml(formatDateTime(r.timestamp))}</span>
-                        <span>${fmt(r.nhiet_do)}°C · ${fmt(r.do_am)}% · ${fmt(r.bui)}</span>
-                    </div>
-                </div>
-            </article>
-        `).join(""));
-
-        $("emptyAlerts")?.classList.toggle("show", alerts.length === 0);
-        renderMiniAlerts();
-        updateNotificationUi();
-    }
-
-    function renderMiniAlerts() {
-        const recent = state.records.filter((r) => r.status !== "safe").slice(-2).reverse();
-        if (recent.length === 0) {
-            setHtml("miniAlertList", `<div class="mini-alert safe">✓ No recent Warning/Danger records.</div>`);
-            return;
-        }
-        setHtml("miniAlertList", recent.map((r) => `
-            <div class="mini-alert ${r.status}">
-                <strong>${stateHeadline(r.status)}</strong><br>
-                ${escapeHtml(r.reasons[0] || r.note)}
-            </div>
-        `).join(""));
-    }
-
-    function renderHealth() {
-        setHealth("firebaseHealth", state.firebaseConnected ? "Connected" : "Offline", state.firebaseConnected ? "online" : "offline");
-        if (!state.latest) {
-            setHealth("gatewayHealth", "No Data", "checking");
-            setHealth("nodeHealth", "No Data", "checking");
-            setHealth("qualityHealth", "Waiting", "checking");
-            return;
-        }
-        const age = dataAgeSeconds(state.latest.timestamp);
-        if (age <= 90) {
-            setHealth("gatewayHealth", "Online", "online");
-            setHealth("nodeHealth", "Active", "online");
-        } else if (age <= 600) {
-            setHealth("gatewayHealth", "Delayed", "warning");
-            setHealth("nodeHealth", "Slow", "warning");
-        } else {
-            setHealth("gatewayHealth", "Stale", "offline");
-            setHealth("nodeHealth", "Inactive", "offline");
-        }
-        const invalid = state.records.filter((r) => !Number.isFinite(r.nhiet_do) || !Number.isFinite(r.do_am) || !Number.isFinite(r.bui)).length;
-        setHealth("qualityHealth", invalid === 0 ? "Good" : `${invalid} invalid`, invalid === 0 ? "online" : "warning");
-    }
-
-    function setHealth(id, text, cls) {
-        const el = $(id);
-        if (!el) return;
-        el.className = cls;
-        el.innerText = text;
-    }
-
-    function renderFreshness() {
-        if (!state.latest) {
-            setText("dataAge", "--");
-            return;
-        }
-        setText("dataAge", humanAge(dataAgeSeconds(state.latest.timestamp)));
-    }
-
-    function updateClock() {
-        setText("localClock", new Intl.DateTimeFormat("vi-VN", {
-            timeZone: TIME_ZONE,
-            hour12: false,
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        }).format(new Date()));
-    }
-
-    async function enableNotifications() {
-        if (!("Notification" in window)) {
-            toast("Trình duyệt này không hỗ trợ Web Notification.");
-            return;
-        }
-
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                state.notificationsEnabled = true;
-                localStorage.setItem(STORAGE.notifications, "true");
-                updateNotificationUi();
-                await showSystemNotification({
-                    status: "safe",
-                    timestamp: Date.now(),
-                    reasons: ["Notification enabled. Only Warning and Danger records will trigger alerts."],
-                    key: "enabled"
-                }, true);
-                toast("Đã bật thông báo Warning/Danger.");
-            } else {
-                state.notificationsEnabled = false;
-                localStorage.setItem(STORAGE.notifications, "false");
-                updateNotificationUi();
-                toast("Bạn chưa cấp quyền notification cho website.");
-            }
-        } catch (error) {
-            toast(`Không bật được notification: ${error.message || error}`);
-        }
-    }
-
-    function maybeNotifyLatest() {
-        const r = state.latest;
-        if (!r || r.status === "safe") return;
-        if (!state.notificationsEnabled || Notification.permission !== "granted") return;
-
-        const key = `${r.key}-${r.status}-${dateKey(r.timestamp)}-${formatTimeShort(r.timestamp)}`;
-        const previousKey = localStorage.getItem(STORAGE.lastNotificationKey) || "";
-        const previousTime = Number(localStorage.getItem(STORAGE.lastNotificationTime)) || 0;
-        if (key === previousKey) return;
-        if (Date.now() - previousTime < NOTIFICATION_COOLDOWN_MS) return;
-
-        showSystemNotification(r).then(() => {
-            localStorage.setItem(STORAGE.lastNotificationKey, key);
-            localStorage.setItem(STORAGE.lastNotificationTime, String(Date.now()));
-        });
-    }
-
-    async function showSystemNotification(record, silent = false) {
-        const title = stateHeadline(record.status);
-        const body = buildLogReason(record);
-        const options = {
-            body,
-            icon: "icon.svg",
-            badge: "icon.svg",
-            tag: record.status === "safe" ? "terrapulse-ready" : `terrapulse-${record.status}`,
-            renotify: record.status !== "safe",
-            data: { url: "./index.html#alerts" },
-            silent
-        };
-        if (!silent) options.vibrate = record.status === "danger" ? [120, 80, 120, 80, 180] : [90, 60, 90];
-
-        if (navigator.serviceWorker && (await navigator.serviceWorker.getRegistration())) {
-            const registration = await navigator.serviceWorker.ready;
-            return registration.showNotification(title, options);
-        }
-        return new Notification(title, options);
-    }
-
-    function updateNotificationUi() {
-        const supported = "Notification" in window;
-        const permission = supported ? Notification.permission : "unsupported";
-        const enabled = state.notificationsEnabled && permission === "granted";
-        const title = !supported ? "Notification is not supported"
-            : enabled ? "Warning/Danger notification is enabled"
-                : permission === "denied" ? "Notification permission was blocked"
-                    : "System notification is not enabled";
-        const text = !supported ? "Trình duyệt này không hỗ trợ Web Notification."
-            : enabled ? "Khi Firebase có dữ liệu Warning hoặc Danger mới, thiết bị sẽ nhận thông báo nếu trình duyệt/PWA cho phép."
-                : permission === "denied" ? "Bạn cần mở quyền notification trong phần cài đặt trình duyệt."
-                    : "Bấm Enable để nhận thông báo khi có Warning hoặc Danger mới từ Firebase.";
-        setText("notificationTitle", title);
-        setText("notificationText", text);
-        setText("notifyBtn", enabled ? "🔔 On" : "🔔 Alerts");
-        setText("notifyHeroBtn", enabled ? "Notifications enabled" : "Enable warning/danger alerts");
-    }
-
-    function clearViewedAlerts() {
-        state.alertsClearedAt = Date.now();
-        localStorage.setItem(STORAGE.clearedAt, String(state.alertsClearedAt));
-        renderAlerts();
-        toast("Đã ẩn các alert đang xem. Alert mới vẫn sẽ hiện lại.");
-    }
-
-    function resetLogFilters() {
-        ["globalSearch", "logSearch", "logDate"].forEach((id) => { if ($(id)) $(id).value = ""; });
-        if ($("statusFilter")) $("statusFilter").value = "all";
-        if ($("sortMode")) $("sortMode").value = "newest";
-        state.visibleLogs = 45;
-        renderLogs();
-    }
-
-    function exportCsv() {
-        const rows = state.filteredLogs.length ? state.filteredLogs : getFilteredLogs();
-        const header = ["timestamp", "status", "temperature", "humidity", "dust", "reason"];
-        const lines = [header.join(",")].concat(rows.map((r) => [
-            csvCell(formatDateTime(r.timestamp)),
-            csvCell(r.status),
-            csvCell(r.nhiet_do),
-            csvCell(r.do_am),
-            csvCell(r.bui),
-            csvCell(r.reasons.join("; "))
-        ].join(",")));
-        downloadFile(`terrapulse_logs_${todayKey()}.csv`, lines.join("\n"), "text/csv;charset=utf-8");
-    }
-
-    function exportJson() {
-        const rows = state.filteredLogs.length ? state.filteredLogs : getFilteredLogs();
-        downloadFile(`terrapulse_logs_${todayKey()}.json`, JSON.stringify(rows, null, 2), "application/json");
-    }
-
-    function downloadFile(filename, content, type) {
-        const blob = new Blob([content], { type });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-    }
-
-    function copyBrief() {
-        const text = $("briefText")?.innerText || "";
-        if (!text) return;
-        navigator.clipboard?.writeText(text).then(() => toast("Đã copy brief."), () => toast(text));
-    }
-
-    function fillSettingsForm() {
-        Object.entries(state.thresholds).forEach(([key, value]) => {
-            if ($(key)) $(key).value = value;
-        });
-        if ($("themeSelect")) $("themeSelect").value = localStorage.getItem(STORAGE.theme) || "terra";
-    }
-
-    function saveSettings() {
-        const next = { ...state.thresholds };
-        Object.keys(DEFAULT_THRESHOLDS).forEach((key) => {
-            const input = $(key);
-            if (!input) return;
-            const value = Number(input.value);
-            if (Number.isFinite(value)) next[key] = value;
-        });
-        state.thresholds = next;
-        localStorage.setItem(STORAGE.thresholds, JSON.stringify(next));
-        state.records = state.records.map((r) => normalizeRecord(r.raw || r, r.key)).filter(Boolean);
-        state.latest = state.records.at(-1) || null;
-        state.previous = state.records.at(-2) || null;
-        renderAll();
-        toast("Đã lưu ngưỡng cảnh báo.");
-    }
-
-    function resetSettings() {
-        state.thresholds = { ...DEFAULT_THRESHOLDS };
-        localStorage.setItem(STORAGE.thresholds, JSON.stringify(state.thresholds));
-        fillSettingsForm();
-        saveSettings();
-        toast("Đã reset ngưỡng mặc định.");
-    }
-
-    function syncRangeOutputs() {
-        setText("simTempOut", `${$("simTemp")?.value || "38"}°C`);
-        setText("simHumidOut", `${$("simHumid")?.value || "82"}%`);
-        setText("simDustOut", `${$("simDust")?.value || "72"}`);
-    }
-
-    function simulateRecord() {
-        const raw = {
-            timestamp: Date.now(),
-            nhiet_do: Number($("simTemp")?.value || 38),
-            do_am: Number($("simHumid")?.value || 82),
-            bui: Number($("simDust")?.value || 72)
-        };
-        const simulated = normalizeRecord(raw, `sim-${Date.now()}`);
-        state.previous = state.latest;
-        state.latest = simulated;
-        state.records = [...state.records, simulated].slice(-state.thresholds.recordLimit);
-        state.simulatedActive = true;
-        renderAll();
-        toast("Đã preview record mô phỏng. Dữ liệu này không ghi vào Firebase.");
-    }
-
-    function renderDemoFallback() {
-        const now = Date.now();
-        const samples = Array.from({ length: 24 }, (_, index) => {
-            const i = 23 - index;
-            return normalizeRecord({
-                timestamp: now - i * 15 * 60 * 1000,
-                nhiet_do: 28 + Math.sin(index / 3) * 4 + (index > 18 ? 5 : 0),
-                do_am: 62 + Math.cos(index / 4) * 10,
-                bui: 34 + Math.sin(index / 2) * 16 + (index > 19 ? 25 : 0)
-            }, `demo-${index}`);
-        }).filter(Boolean);
-        state.records = samples;
-        state.latest = samples.at(-1) || null;
-        state.previous = samples.at(-2) || null;
-        renderAll();
-        toast("Đang hiển thị demo fallback vì chưa đọc được Firebase.");
-    }
-
-    function registerServiceWorker() {
-        if (!("serviceWorker" in navigator)) return;
-        window.addEventListener("load", () => {
-            navigator.serviceWorker.register("sw.js").catch(() => { });
-        });
-    }
-
-    // function applyTheme(theme) {
-    //     const selected = ["terra", "sakura", "graphite"].includes(theme) ? theme : "terra";
-    //     document.body.classList.remove("theme-terra", "theme-sakura", "theme-graphite");
-    //     document.body.classList.add(`theme-${selected}`);
-    //     localStorage.setItem(STORAGE.theme, selected);
-    //     if ($("themeSelect")) $("themeSelect").value = selected;
-    //     setTimeout(() => {
-    //         renderCharts();
-    //         renderLab();
-    //     }, 0);
-    // }
-
-    function applyTheme(theme) {
-        const themes = [
-            "terra",
-            "sakura",
-            "graphite",
-            "ocean",
-            "lavender",
-            "mocha",
-            "forest"
-        ];
-
-        const selected = themes.includes(theme) ? theme : "terra";
-
-        document.body.classList.remove(
-            "theme-terra",
-            "theme-sakura",
-            "theme-graphite",
-            "theme-ocean",
-            "theme-lavender",
-            "theme-mocha",
-            "theme-forest"
-        );
-
-        document.body.classList.add(`theme-${selected}`);
-        localStorage.setItem(STORAGE.theme, selected);
-
-        if ($("themeSelect")) {
-            $("themeSelect").value = selected;
-        }
-
-        setTimeout(() => {
-            renderCharts();
-            renderLab();
-        }, 0);
-    }
-
-    function setConnection(connected, text) {
-        state.firebaseConnected = connected;
-        const pill = $("connectionPill");
-        if (pill) {
-            pill.classList.remove("connected", "disconnected", "checking");
-            pill.classList.add(connected ? "connected" : text?.toLowerCase().includes("checking") ? "checking" : "disconnected");
-        }
-        setText("connectionText", text);
-    }
-
-    function setDateInputs(date) {
-        state.selectedDate = date;
-        if ($("datePicker")) $("datePicker").value = date;
-        if ($("analysisDate")) $("analysisDate").value = date;
-    }
-
-    function setActiveChartMode(mode) {
-        $$('[data-chart-mode]').forEach((btn) => btn.classList.toggle("active", btn.dataset.chartMode === mode));
-    }
-
-    function recordsByDate(date) {
-        return state.records.filter((r) => dateKey(r.timestamp) === date);
-    }
-
-    function dailyAverages(records) {
-        const groups = new Map();
-        records.forEach((r) => {
-            const key = dateKey(r.timestamp);
-            if (!groups.has(key)) {
-                groups.set(key, { label: formatDateKey(key), timestamp: r.timestamp, temp: 0, humid: 0, dust: 0, count: 0 });
-            }
-            const g = groups.get(key);
-            g.temp += r.nhiet_do;
-            g.humid += r.do_am;
-            g.dust += r.bui;
-            g.count += 1;
-        });
-        return Array.from(groups.values()).map((g) => ({
-            label: g.label,
-            timestamp: g.timestamp,
-            nhiet_do: Number((g.temp / g.count).toFixed(2)),
-            do_am: Number((g.humid / g.count).toFixed(2)),
-            bui: Number((g.dust / g.count).toFixed(2))
-        })).sort((a, b) => timeMs(a.timestamp) - timeMs(b.timestamp));
-    }
-
-    function countStatuses(records) {
-        return records.reduce((acc, r) => {
-            acc[r.status] = (acc[r.status] || 0) + 1;
-            return acc;
-        }, { safe: 0, warning: 0, danger: 0 });
-    }
-
-    function loadThresholds() {
-        try {
-            return { ...DEFAULT_THRESHOLDS, ...(JSON.parse(localStorage.getItem(STORAGE.thresholds) || "{}")) };
-        } catch {
-            return { ...DEFAULT_THRESHOLDS };
-        }
-    }
-
-    function dateKey(timestamp) {
-        const parts = new Intl.DateTimeFormat("en-CA", {
-            timeZone: TIME_ZONE,
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit"
-        }).formatToParts(new Date(timeMs(timestamp)));
-        const y = parts.find((p) => p.type === "year")?.value;
-        const m = parts.find((p) => p.type === "month")?.value;
-        const d = parts.find((p) => p.type === "day")?.value;
-        return `${y}-${m}-${d}`;
-    }
-
-    function todayKey() {
-        return dateKey(Date.now());
-    }
-
-    function formatDateKey(key) {
-        if (!key || !key.includes("-")) return "--";
-        const [y, m, d] = key.split("-");
-        return `${d}/${m}/${y}`;
-    }
-
-    function formatDateTime(timestamp) {
-        return new Intl.DateTimeFormat("vi-VN", {
-            timeZone: TIME_ZONE,
-            hour12: false,
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        }).format(new Date(timeMs(timestamp)));
-    }
-
-    function formatTimeShort(timestamp) {
-        return new Intl.DateTimeFormat("vi-VN", {
-            timeZone: TIME_ZONE,
-            hour12: false,
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        }).format(new Date(timeMs(timestamp)));
-    }
-
-    function timeMs(timestamp) {
-        const n = Number(timestamp);
-        if (!Number.isFinite(n)) return Date.now();
-        return n < 1000000000000 ? n * 1000 : n;
-    }
-
-    function dataAgeSeconds(timestamp) {
-        return Math.max(0, Math.floor((Date.now() - timeMs(timestamp)) / 1000));
-    }
-
-    function humanAge(seconds) {
-        if (seconds < 60) return `${seconds}s ago`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-        return `${Math.floor(seconds / 86400)}d ago`;
-    }
-
-    function toNumber(value) {
-        const n = Number(value);
-        return Number.isFinite(n) ? n : 0;
-    }
-
-    function avg(values) {
-        const clean = values.filter((v) => Number.isFinite(Number(v))).map(Number);
-        return clean.length ? clean.reduce((a, b) => a + b, 0) / clean.length : 0;
-    }
-
-    function fmt(value) {
-        const n = Number(value);
-        if (!Number.isFinite(n)) return "--";
-        return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
-    }
-
-    function clamp(value, min, max) {
-        return Math.min(max, Math.max(min, value));
-    }
-
-    function cssColors() {
-        const s = getComputedStyle(document.body);
-        return {
-            temp: s.getPropertyValue("--accent-2").trim() || "#df7a46",
-            humid: s.getPropertyValue("--accent").trim() || "#0f8b72",
-            dust: s.getPropertyValue("--accent-3").trim() || "#e0b542",
-            text: s.getPropertyValue("--text").trim() || "#1f261f",
-            muted: s.getPropertyValue("--muted").trim() || "#81705a",
-            grid: s.getPropertyValue("--chart-grid").trim() || "rgba(0,0,0,.1)",
-            tooltip: s.getPropertyValue("--deep").trim() || "#14332b",
-            tooltipText: s.getPropertyValue("--rail-text").trim() || "#fff8e6",
-            safe: s.getPropertyValue("--safe").trim() || "#2f9e6d",
-            warning: s.getPropertyValue("--warning").trim() || "#d8941d",
-            danger: s.getPropertyValue("--danger").trim() || "#df5b4f"
-        };
-    }
-
-    function alpha(color, opacity) {
-        if (color.startsWith("#")) {
-            const hex = color.replace("#", "");
-            const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
-            const r = parseInt(full.slice(0, 2), 16);
-            const g = parseInt(full.slice(2, 4), 16);
-            const b = parseInt(full.slice(4, 6), 16);
-            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-        }
-        return color;
-    }
-
-    function setText(target, value) {
-        const el = typeof target === "string" ? $(target) : target;
-        if (el) el.innerText = value;
-    }
-
-    function setHtml(id, value) {
-        const el = $(id);
-        if (el) el.innerHTML = value;
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            "'": "&#039;",
-            '"': "&quot;"
-        }[char]));
-    }
-
-    function csvCell(value) {
-        return `"${String(value ?? "").replace(/"/g, '""')}"`;
-    }
-
-    function toast(message) {
-        const el = $("toast");
-        if (!el) return;
-        el.innerText = message;
-        el.classList.add("show");
-        clearTimeout(state.toastTimer);
-        state.toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
-    }
+"use strict";
+const ROOT="/IoT_Based_Environmental";
+const HISTORY_PATH=`${ROOT}/history`, CONFIG_PATH=`${ROOT}/config`, CONTROL_PATH=`${ROOT}/control`, SNOOZE_PATH=`${ROOT}/snooze`, COMMAND_PATH=`${ROOT}/commands`, DEVICES_PATH=`${ROOT}/devices`, ALERTS_PATH=`${ROOT}/alerts`, DAILY_AVERAGES_PATH=`${ROOT}/dailyAverages`;
+const DEFAULT_CONFIG={send_interval:1,fixed_times:["08:00","12:00","18:00"],listen_window:3,heartbeat:15,delta:{temp:.5,humi:2,dust:5},thresholds:{temp_danger_low:0,temp_warn_low:10,temp_safe_low:18,temp_safe_high:35,temp_warn_high:38,temp_danger_high:45,humi_danger_low:15,humi_warn_low:20,humi_safe_low:30,humi_safe_high:65,humi_warn_high:80,humi_danger_high:90,dust_safe_high:45,dust_warn_high:80,dust_danger_high:150},buzzer:{mode:"snooze",snooze_duration:600,auto_mode:true,lock_danger:false,resume_if_danger:true}};
+const $=id=>document.getElementById(id), $$=sel=>[...document.querySelectorAll(sel)];
+let records=[],alerts=[],devices={},dailyAverages={},config=clone(DEFAULT_CONFIG),control={buzzerOn:false,buzzerMuted:false,muteUntil:0},snooze={active:false,start_time:0,duration:0},latest=null,chart=null,firebaseOnline=false,historyLimit=60,alertLimit=40,selectedSnooze=30;
+
+document.addEventListener("DOMContentLoaded",init);
+function init(){bindNav();bindActions();tick();setInterval(tick,1000);setInterval(renderBuzzer,1000);setToday();registerSW();connectFirebase();}
+function bindNav(){[...$$(".nav-btn"),...$$(".mobile-btn")].forEach(b=>b.onclick=()=>goPage(b.dataset.page));$$("[data-go]").forEach(b=>b.onclick=()=>goPage(b.dataset.go));$("menuBtn").onclick=()=>toggleSide(true);$("sidebarBackdrop").onclick=()=>toggleSide(false);const h=location.hash.slice(1);if(["overview","history","alerts","buzzer","devices","settings"].includes(h))goPage(h)}
+function goPage(p){$$(".page").forEach(x=>x.classList.toggle("active",x.id===p));[...$$(".nav-btn"),...$$(".mobile-btn")].forEach(x=>x.classList.toggle("active",x.dataset.page===p));location.hash=p==="overview"?"":p;toggleSide(false);if(p==="history")renderHistory();if(p==="alerts")renderAlerts();if(p==="devices")renderDevices();}
+function toggleSide(open){$("sidebar").classList.toggle("open",open);$("sidebarBackdrop").classList.toggle("show",open)}
+function bindActions(){
+ $("chartCount").onchange=renderChart;$("exportCsv").onclick=exportCsv;
+ ["historySearch","historyNode","historyStatus","historyDate"].forEach(id=>$(id).addEventListener(id==="historySearch"?"input":"change",renderHistory));
+ $("clearHistoryFilters").onclick=()=>{$("historySearch").value="";$("historyNode").value="all";$("historyStatus").value="all";$("historyDate").value="";renderHistory()};
+ $("loadMoreHistory").onclick=()=>{historyLimit+=60;renderHistory()};$("loadMoreAlerts").onclick=()=>{alertLimit+=40;renderAlerts()};
+ ["alertType","alertStatus","alertDate"].forEach(id=>$(id).onchange=renderAlerts);$("todayAlerts").onclick=()=>{$("alertDate").value=dateKey(Date.now());renderAlerts()};
+ $("deleteAlertsSelected").onclick=deleteSelectedAlerts;
+ $$(".preset").forEach(b=>b.onclick=()=>{$$(".preset").forEach(x=>x.classList.remove("active"));b.classList.add("active");selectedSnooze=Number(b.dataset.seconds);$("customSnoozeValue").value=selectedSnooze;$("customSnoozeUnit").value="seconds"});
+ $("customSnoozeValue").oninput=()=>$$(".preset").forEach(x=>x.classList.remove("active"));$("customSnoozeUnit").onchange=()=>$$(".preset").forEach(x=>x.classList.remove("active"));
+ $("startSnooze").onclick=startSnooze;$("cancelSnooze").onclick=cancelSnooze;
+ $("autoMode").onchange=e=>saveBuzzerSetting("auto_mode",e.target.checked);$("lockDanger").onchange=e=>saveBuzzerSetting("lock_danger",e.target.checked);$("resumeIfDanger").onchange=e=>saveBuzzerSetting("resume_if_danger",e.target.checked);
+ $("refreshDevices").onclick=()=>{renderDevices();toast("Đã kiểm tra lại trạng thái hai node")};
+ $("addFixedTime").onclick=()=>addFixedTime("08:00");$("configForm").onsubmit=saveConfig;$("resetConfig").onclick=()=>{config=clone(DEFAULT_CONFIG);fillConfig();toast("Đã khôi phục cấu hình mặc định. Nhấn Lưu thay đổi để ghi lên Firebase.")};
+ $("notificationToggle").onchange=toggleNotifications;$("notificationPermission").onclick=toggleNotifications;
+ document.addEventListener("click",e=>{const d=e.target.closest("[data-alert-key]");if(d)deleteAlert(d.dataset.alertKey)});
+}
+function connectFirebase(){
+ if(!window.database){setConnection(false,"Thiếu cấu hình Firebase");return}
+ database.ref(".info/connected").on("value",s=>setConnection(s.val()===true,s.val()===true?"Firebase online":"Firebase offline"));
+ database.ref(HISTORY_PATH).limitToLast(5000).on("value",snap=>{const arr=[];snap.forEach(c=>{const r=normalize(c.val(),c.key);if(r)arr.push(r)});arr.sort((a,b)=>a.time-b.time);records=arr;latest=arr.at(-1)||null;renderAll()});
+ database.ref(CONFIG_PATH).on("value",s=>{config=mergeDeep(clone(DEFAULT_CONFIG),s.val()||{});normalizeFixedTimes();fillConfig();renderOverview()});
+ database.ref(CONTROL_PATH).on("value",s=>{control={...control,...(s.val()||{})};renderBuzzer();renderOverview()});
+ database.ref(SNOOZE_PATH).on("value",s=>{snooze={...snooze,...(s.val()||{})};renderBuzzer()});
+ database.ref(DEVICES_PATH).on("value",s=>{devices=s.val()||{};renderDevices();renderOverview()});
+ database.ref(ALERTS_PATH).limitToLast(1000).on("value",s=>{const a=[];s.forEach(c=>a.push({key:c.key,...c.val()}));alerts=a.sort((x,y)=>timeMs(x.timestamp)-timeMs(y.timestamp));renderAlerts()});
+ database.ref(DAILY_AVERAGES_PATH).on("value",s=>{dailyAverages=s.val()||{};renderAverages()});
+}
+function normalize(raw,key){if(!raw||typeof raw!=="object")return null;const temp=num(raw.nhiet_do??raw.temperature??raw.temp),humid=num(raw.do_am??raw.humidity??raw.humid),dust=num(raw.bui_min??raw.bui??raw.pm25??raw.dust);let t=Number(raw.timestamp??raw.time??key);if(!Number.isFinite(t))t=Date.now();if(t<1e12)t*=1000;const node=String(raw.node_id??raw.nodeId??raw.node??"combined");return {key,time:t,temp,humid,dust,node,...analyze(temp,humid,dust)}}
+function analyze(temp,humid,dust){const th=config.thresholds;let level=0,reasons=[];const add=(l,t)=>{level=Math.max(level,l);reasons.push(t)};
+ if(Number.isFinite(temp)){if(temp<=th.temp_danger_low)add(2,`Nhiệt độ ${fmt(temp)}°C nguy hiểm thấp`);else if(temp<=th.temp_warn_low)add(1,`Nhiệt độ ${fmt(temp)}°C cảnh báo thấp`);else if(temp>=th.temp_danger_high)add(2,`Nhiệt độ ${fmt(temp)}°C nguy hiểm cao`);else if(temp>=th.temp_warn_high)add(1,`Nhiệt độ ${fmt(temp)}°C cảnh báo cao`)}
+ if(Number.isFinite(humid)){if(humid<=th.humi_danger_low)add(2,`Độ ẩm ${fmt(humid)}% nguy hiểm thấp`);else if(humid<=th.humi_warn_low)add(1,`Độ ẩm ${fmt(humid)}% cảnh báo thấp`);else if(humid>=th.humi_danger_high)add(2,`Độ ẩm ${fmt(humid)}% nguy hiểm cao`);else if(humid>=th.humi_warn_high)add(1,`Độ ẩm ${fmt(humid)}% cảnh báo cao`)}
+ if(Number.isFinite(dust)){if(dust>=th.dust_danger_high)add(2,`Bụi ${fmt(dust)} µg/m³ nguy hiểm`);else if(dust>=th.dust_warn_high)add(1,`Bụi ${fmt(dust)} µg/m³ cảnh báo`)}
+ return {status:level===2?"danger":level===1?"warning":"safe",reasons:reasons.length?reasons:["Các chỉ số trong vùng an toàn"]}}
+function renderAll(){records=records.map(r=>({...r,...analyze(r.temp,r.humid,r.dust)}));latest=records.at(-1)||null;renderOverview();renderChart();renderHistory();renderAlerts();renderDevices();renderBuzzer()}
+function renderOverview(){
+ if(!latest){$("systemState").textContent="Đang chờ dữ liệu";return}
+ const m={safe:["An toàn","Tất cả chỉ số trong vùng cho phép","✓"],warning:["Cảnh báo",latest.reasons.join(" • "),"!"],danger:["Nguy hiểm",latest.reasons.join(" • "),"!"]}[latest.status];
+ $("systemBanner").className=`system-banner ${latest.status}`;$("systemState").textContent=m[0];$("systemMessage").textContent=m[1];$("systemIcon").textContent=m[2];
+ setMetric("temp",latest.temp,metricStatus("temp",latest.temp),Math.max(4,Math.min(100,latest.temp/50*100)));setMetric("humid",latest.humid,metricStatus("humid",latest.humid),Math.max(4,Math.min(100,latest.humid)));setMetric("dust",latest.dust,metricStatus("dust",latest.dust),Math.max(4,Math.min(100,latest.dust/180*100)));
+ $("latestDateTime").textContent=formatDateTime(latest.time);$("sideLatest").textContent=formatTime(latest.time);
+ const states=getNodeStates(),healthy=states.filter(x=>x.level==="online").length;$("nodeCountText").textContent=`${healthy}/2`;$("healthScore").textContent=`${Math.round(healthy/2*100)}%`;$("healthTitle").textContent=healthy===2?"Hệ thống hoạt động tốt":healthy===1?"Một node cần kiểm tra":"Hai node cần kiểm tra";$("healthNote").textContent=states.map(s=>`${s.name}: ${s.label}`).join(" • ");
+ $("sendIntervalSummary").textContent="1 phút / lần";$("fixedTimesSummary").textContent=(config.fixed_times||[]).join(", ")||"--";$("buzzerSummary").textContent=snooze.active?"Đang snooze":control.buzzerOn?"Đang kêu":"Sẵn sàng";
+ renderAverages();$("overviewHistoryBody").innerHTML=records.slice(-8).reverse().map(tableRow).join("")||`<tr><td colspan="6">Chưa có dữ liệu.</td></tr>`;
+}
+function setMetric(id,v,status,pct){$(id+"Value").textContent=Number.isFinite(v)?fmt(v):"--";$(id+"Card").className=`metric ${status}`;$(id+"State").textContent=label(status);$(id+"Bar").style.width=pct+"%"}
+function metricStatus(type,v){const t=config.thresholds;if(!Number.isFinite(v))return"warning";if(type==="temp")return v<=t.temp_danger_low||v>=t.temp_danger_high?"danger":v<=t.temp_warn_low||v>=t.temp_warn_high?"warning":"safe";if(type==="humid")return v<=t.humi_danger_low||v>=t.humi_danger_high?"danger":v<=t.humi_warn_low||v>=t.humi_warn_high?"warning":"safe";return v>=t.dust_danger_high?"danger":v>=t.dust_warn_high?"warning":"safe"}
+function renderChart(){if(!$("mainChart"))return;const n=Number($("chartCount").value||24),d=records.slice(-n);if(chart)chart.destroy();chart=new Chart($("mainChart"),{type:"line",data:{labels:d.map(r=>formatTime(r.time)),datasets:[{label:"Nhiệt độ °C",data:d.map(r=>r.temp),borderColor:"#20ad67",backgroundColor:"rgba(32,173,103,.1)",tension:.35,pointRadius:2},{label:"Độ ẩm %",data:d.map(r=>r.humid),borderColor:"#2d7eea",backgroundColor:"rgba(45,126,234,.1)",tension:.35,pointRadius:2},{label:"Bụi µg/m³",data:d.map(r=>r.dust),borderColor:"#f4a30b",backgroundColor:"rgba(244,163,11,.1)",tension:.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:8}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:"rgba(100,116,139,.12)"}}}}})}
+function renderAverages(){
+ if(!$("averageGrid"))return;
+ const periods=[["Hôm nay",1,true],["2 ngày",2,false],["7 ngày",7,false],["30 ngày",30,false]];
+ $("averageGrid").innerHTML=periods.map(([name,days,today])=>{
+   const start=today?startOfDay(Date.now()):Date.now()-days*864e5;
+   const live=records.filter(r=>r.time>=start);
+   const archived=Object.values(dailyAverages||{}).filter(x=>{
+     const ts=Date.parse((x.date||"")+"T00:00:00");
+     return Number.isFinite(ts)&&ts>=start;
+   });
+   const a=combinedAverage(live,archived);
+   const count=live.length+archived.reduce((s,x)=>s+Number(x.sampleCount||0),0);
+   return `<div class="average-card"><strong>${name}</strong>${a?`<span>${fmt(a.temp)} <small>°C</small></span><span>${fmt(a.humid)} <small>%</small></span><span>${fmt(a.dust)} <small>µg/m³</small></span><small>${count} mẫu</small>`:`<small>Chưa có dữ liệu</small>`}</div>`
+ }).join("")
+}
+function filteredHistory(){const q=$("historySearch").value.toLowerCase().trim(),node=$("historyNode").value,status=$("historyStatus").value,date=$("historyDate").value;return records.filter(r=>(status==="all"||r.status===status)&&(!date||dateKey(r.time)===date)&&(node==="all"||nodeType(r)===node)&&(!q||formatDateTime(r.time).toLowerCase().includes(q)||r.node.toLowerCase().includes(q)||label(r.status).toLowerCase().includes(q))).reverse()}
+function renderHistory(){if(!$("historyList"))return;const all=filteredHistory(),shown=all.slice(0,historyLimit);$("historyList").innerHTML=shown.map(r=>`<article class="record-card ${r.status}"><div><span>Thời gian</span><strong>${formatDateTime(r.time)}</strong></div><div><span>Sensor node</span><strong>${nodeName(r)}</strong></div><div><span>Nhiệt độ</span><strong>${Number.isFinite(r.temp)?fmt(r.temp)+" °C":"--"}</strong></div><div><span>Độ ẩm</span><strong>${Number.isFinite(r.humid)?fmt(r.humid)+"%":"--"}</strong></div><div><span>Bụi mịn</span><strong>${Number.isFinite(r.dust)?fmt(r.dust):"--"}</strong></div><div><span class="state ${r.status}">${label(r.status)}</span></div></article>`).join("")||`<div class="panel">Chưa có dữ liệu phù hợp.</div>`;$("historyCount").textContent=`Hiển thị ${shown.length} / ${all.length} bản ghi`;$("loadMoreHistory").style.display=shown.length<all.length?"inline-flex":"none"}
+function renderAlerts(){if(!$("alertList"))return;const date=$("alertDate").value,type=$("alertType").value,status=$("alertStatus").value;let all=alerts.length?alerts.map(a=>normalizeAlert(a)):records.filter(r=>r.status!=="safe").map(r=>({key:"history-"+r.key,type:"environment",status:r.status,time:r.time,message:r.reasons.join(" • "),node:nodeName(r)}));all=all.filter(a=>(type==="all"||a.type===type)&&(status==="all"||a.status===status)&&(!date||dateKey(a.time)===date)).reverse();const shown=all.slice(0,alertLimit);$("alertList").innerHTML=shown.map(a=>`<article class="alert-card ${a.status}"><input class="alert-check" type="checkbox" value="${esc(a.key)}"><div class="alert-main"><div><small>Thời gian</small><strong>${formatDateTime(a.time)}</strong></div><div><small>Loại</small><strong>${a.type==="device"?"Thiết bị":"Môi trường"}</strong></div><div><small>Nội dung</small><strong>${esc(a.message)}</strong><small>${esc(a.node||"")}</small></div></div><div class="alert-actions"><span class="state ${a.status}">${label(a.status)}</span>${!a.key.startsWith("history-")?`<button class="delete-btn" data-alert-key="${esc(a.key)}" title="Xóa">⌫</button>`:""}</div></article>`).join("")||`<div class="panel">Không có cảnh báo phù hợp.</div>`;$("alertCount").textContent=`${all.length} cảnh báo`;$("alertBadge").textContent=String(all.filter(a=>dateKey(a.time)===dateKey(Date.now())).length);$("loadMoreAlerts").style.display=shown.length<all.length?"inline-flex":"none"}
+function normalizeAlert(a){return {key:a.key,type:a.type||((a.device||a.node_status)?"device":"environment"),status:a.level==="critical"?"danger":a.level||a.status||"warning",time:timeMs(a.timestamp),message:a.message||a.content||a.reason||"Cảnh báo",node:a.node_name||a.node||""}}
+async function deleteAlert(key){if(!confirm("Xóa cảnh báo này?"))return;try{await database.ref(`${ALERTS_PATH}/${key}`).remove();toast("Đã xóa cảnh báo")}catch(e){toast(e.message)}}
+async function deleteSelectedAlerts(){const keys=$$(".alert-check:checked").map(x=>x.value).filter(x=>!x.startsWith("history-"));if(!keys.length)return toast("Chưa chọn cảnh báo Firebase nào");if(!confirm(`Xóa ${keys.length} cảnh báo?`))return;const up={};keys.forEach(k=>up[k]=null);await database.ref(ALERTS_PATH).update(up);toast("Đã xóa cảnh báo đã chọn")}
+function renderDevices(){if(!$("deviceGrid"))return;const states=getNodeStates();$("healthyNodes").textContent=states.filter(s=>s.level==="online").length;$("problemNodes").textContent=states.filter(s=>s.level!=="online").length;$("deviceBadge").textContent=states.filter(s=>s.level!=="online").length;$("deviceGrid").innerHTML=states.map(s=>deviceCard(s)).join("")}
+function getNodeStates(){const now=Date.now(),latestClimate=getLatestFor("climate"),latestDust=getLatestFor("dust");return [buildNode("climate","Node nhiệt độ & độ ẩm","Đo nhiệt độ và độ ẩm",latestClimate,devices.climate_node||devices.node_climate||devices.node_01,now),buildNode("dust","Node bụi mịn","Đo nồng độ bụi",latestDust,devices.dust_node||devices.node_dust||devices.node_02,now)]}
+function buildNode(id,name,desc,last,raw,now){let seen=timeMs(raw?.last_seen??raw?.lastSeen??last?.time??0),age=seen?now-seen:Infinity,level=age<=180000?"online":age<=360000?"slow":"offline";let label=level==="online"?"Hoạt động tốt":level==="slow"?"Cập nhật chậm":"Mất kết nối";return {id,name,desc,last,raw:raw||{},seen,age,level,label}}
+function getLatestFor(type){const subset=records.filter(r=>nodeType(r)===type||r.node==="combined");return subset.at(-1)||null}
+function nodeType(r){const n=r.node.toLowerCase();if(n.includes("dust")||n.includes("bui")||n.includes("02"))return"dust";if(n.includes("temp")||n.includes("humi")||n.includes("climate")||n.includes("01"))return"climate";if(Number.isFinite(r.dust)&&!Number.isFinite(r.temp)&&!Number.isFinite(r.humid))return"dust";return"climate"}
+function deviceCard(s){const raw=s.raw,stuck=detectStuck(s.id),signal=raw.wifi_rssi??raw.wifiRssi??raw.lora_rssi??raw.loraRssi??"--";const health=s.id==="climate"?`<div><span>Nhiệt độ</span><strong class="${stuck.temp?"warn":"ok"}">${stuck.temp?"Có thể bị treo":"Hoạt động tốt"}</strong></div><div><span>Độ ẩm</span><strong class="${stuck.humid?"warn":"ok"}">${stuck.humid?"Có thể bị treo":"Hoạt động tốt"}</strong></div>`:`<div><span>Bụi mịn</span><strong class="${stuck.dust?"warn":"ok"}">${stuck.dust?"Có thể bị treo":"Hoạt động tốt"}</strong></div>`;return `<article class="device-card ${s.level}"><div class="device-card-head"><div><h2>${s.name}</h2><p>${s.desc}</p></div><span class="state ${s.level==="online"?"safe":s.level==="slow"?"warning":"danger"}">${s.label}</span></div><div class="device-meta"><div><span>Cập nhật cuối</span><strong>${s.seen?formatDateTime(s.seen):"Chưa có dữ liệu"}</strong></div><div><span>Tín hiệu</span><strong>${signal}${signal!=="--"?" dBm":""}</strong></div><div><span>Firmware</span><strong>${raw.firmware||"--"}</strong></div><div><span>Uptime</span><strong>${raw.uptime?formatDuration(raw.uptime):"--"}</strong></div></div><div class="sensor-health">${health}<div><span>Kết nối dữ liệu</span><strong class="${s.level==="online"?"ok":s.level==="slow"?"warn":"bad"}">${s.label}</strong></div></div></article>`}
+function detectStuck(type){const rs=records.filter(r=>nodeType(r)===type).slice(-12),eq=k=>rs.length>=8&&rs.every(r=>Number.isFinite(r[k]))&&new Set(rs.map(r=>fmt(r[k]))).size===1;return {temp:eq("temp"),humid:eq("humid"),dust:eq("dust")}}
+function renderBuzzer(){
+ if(!$("buzzerText"))return;
+ const now=Date.now();
+ const snoozeUntil=Number(snooze.start_time||0)+Number(snooze.duration||0)*1000;
+ const controlUntil=Number(control.muteUntil||0);
+ const until=Math.max(snoozeUntil,controlUntil);
+ const active=(!!snooze.active||!!control.buzzerMuted)&&until>now;
+ if((snooze.active||control.buzzerMuted)&&!active&&window.database){
+   database.ref(SNOOZE_PATH).update({active:false,duration:0});
+   database.ref(CONTROL_PATH).update({buzzerMuted:false,muteUntil:0,command:"cancel_mute"});
+ }
+ $("countdownWrap").classList.toggle("hidden",!active);
+ $("cancelSnooze").classList.toggle("hidden",!active);
+ $("startSnooze").classList.toggle("hidden",active);
+ $("buzzerLamp").className=`buzzer-icon ${control.buzzerOn&&!active?"on":""}`;
+ $("buzzerText").textContent=active?"Chuông đang tắt tạm thời":control.buzzerOn?"Chuông đang kêu":"Chuông đang chờ";
+ $("buzzerNote").textContent=active?"Chuông sẽ tự bật lại khi hết thời gian.":control.buzzerOn?"Hệ thống đang yêu cầu phát cảnh báo.":"Chuông chỉ kêu khi hệ thống yêu cầu hoặc được kích hoạt tự động.";
+ $("muteCountdown").textContent=active?countdown(until-now):"00:00";
+ $("autoMode").checked=!!config.buzzer.auto_mode;
+ $("lockDanger").checked=!!config.buzzer.lock_danger;
+ $("resumeIfDanger").checked=config.buzzer.resume_if_danger!==false
+}
+async function startSnooze(){
+ let value=Number($("customSnoozeValue").value||selectedSnooze);
+ let seconds=$("customSnoozeUnit").value==="minutes"?value*60:value;
+ if($$(".preset.active").length)seconds=selectedSnooze;
+ if(seconds<30||seconds>3600)return toast("Thời gian phải từ 30 giây đến 60 phút");
+ if(latest?.status==="danger"&&config.buzzer.lock_danger)return toast("Đang khóa tắt tạm thời vì hệ thống ở mức nguy hiểm");
+ const now=Date.now(),until=now+seconds*1000;
+ try{
+   await Promise.all([
+     database.ref(CONTROL_PATH).update({
+       buzzerMuted:true,
+       buzzerOn:false,
+       command:"mute",
+       manualCommand:"off",
+       muteMinutes:seconds/60,
+       muteUntil:until,
+       updatedAt:firebase.database.ServerValue.TIMESTAMP
+     }),
+     database.ref(SNOOZE_PATH).set({
+       active:true,
+       start_time:now,
+       duration:seconds,
+       level_before:latest?.status||"safe"
+     }),
+     database.ref(COMMAND_PATH).set({
+       pending:true,
+       command:"BUZZER_SNOOZE",
+       duration:seconds,
+       timestamp:firebase.database.ServerValue.TIMESTAMP
+     })
+   ]);
+   toast("Đã gửi lệnh tắt chuông tạm thời")
+ }catch(error){toast("Không gửi được lệnh: "+error.message)}
+}
+async function cancelSnooze(){
+ try{
+   await Promise.all([
+     database.ref(CONTROL_PATH).update({
+       buzzerMuted:false,
+       buzzerOn:false,
+       command:"cancel_mute",
+       manualCommand:"on",
+       muteUntil:0,
+       updatedAt:firebase.database.ServerValue.TIMESTAMP
+     }),
+     database.ref(SNOOZE_PATH).update({active:false,duration:0}),
+     database.ref(COMMAND_PATH).set({
+       pending:true,
+       command:"BUZZER_RESUME",
+       timestamp:firebase.database.ServerValue.TIMESTAMP
+     })
+   ]);
+   toast("Đã hủy tắt chuông tạm thời")
+ }catch(error){toast("Không gửi được lệnh: "+error.message)}
+}
+async function saveBuzzerSetting(k,v){config.buzzer[k]=v;await database.ref(`${CONFIG_PATH}/buzzer/${k}`).set(v);await signalSync();toast("Đã cập nhật thiết lập an toàn")}
+function fillConfig(){normalizeFixedTimes();$("deltaTemp").value=config.delta.temp;$("deltaHumi").value=config.delta.humi;$("deltaDust").value=config.delta.dust;const m={tempDangerLow:"temp_danger_low",tempWarnLow:"temp_warn_low",tempSafeLow:"temp_safe_low",tempSafeHigh:"temp_safe_high",tempWarnHigh:"temp_warn_high",tempDangerHigh:"temp_danger_high",humiDangerLow:"humi_danger_low",humiWarnLow:"humi_warn_low",humiSafeLow:"humi_safe_low",humiSafeHigh:"humi_safe_high",humiWarnHigh:"humi_warn_high",humiDangerHigh:"humi_danger_high",dustSafeHigh:"dust_safe_high",dustWarnHigh:"dust_warn_high",dustDangerHigh:"dust_danger_high"};Object.entries(m).forEach(([id,k])=>$(id).value=config.thresholds[k]);renderFixedTimes()}
+function normalizeFixedTimes(){let x=config.fixed_times;if(typeof x==="string")x=x.split(",");if(!Array.isArray(x)||!x.length)x=["08:00"];config.fixed_times=[...new Set(x.map(String).filter(t=>/^\d{2}:\d{2}$/.test(t)))].sort()}
+function renderFixedTimes(){$("fixedTimes").innerHTML=config.fixed_times.map((t,i)=>`<div class="time-chip"><input type="time" value="${t}" data-time-index="${i}"><button type="button" data-remove-time="${i}" title="Xóa">×</button></div>`).join("");$$("[data-time-index]").forEach(x=>x.onchange=e=>{config.fixed_times[Number(e.target.dataset.timeIndex)]=e.target.value;normalizeFixedTimes();renderFixedTimes()});$$("[data-remove-time]").forEach(x=>x.onclick=e=>{if(config.fixed_times.length<=1)return toast("Phải giữ ít nhất một mốc giờ");config.fixed_times.splice(Number(e.target.dataset.removeTime),1);renderFixedTimes()})}
+function addFixedTime(t){
+ let candidate=t||"08:00",tries=0;
+ while(config.fixed_times.includes(candidate)&&tries<144){
+   const parts=candidate.split(":").map(Number);
+   const total=(parts[0]*60+parts[1]+10)%1440;
+   candidate=String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0");
+   tries++;
+ }
+ config.fixed_times.push(candidate);normalizeFixedTimes();renderFixedTimes()
+}
+async function saveConfig(e){
+ e.preventDefault();
+ const next=clone(config);
+ next.send_interval=1;
+ next.delta={temp:Number($("deltaTemp").value),humi:Number($("deltaHumi").value),dust:Number($("deltaDust").value)};
+ const map={temp_danger_low:"tempDangerLow",temp_warn_low:"tempWarnLow",temp_safe_low:"tempSafeLow",temp_safe_high:"tempSafeHigh",temp_warn_high:"tempWarnHigh",temp_danger_high:"tempDangerHigh",humi_danger_low:"humiDangerLow",humi_warn_low:"humiWarnLow",humi_safe_low:"humiSafeLow",humi_safe_high:"humiSafeHigh",humi_warn_high:"humiWarnHigh",humi_danger_high:"humiDangerHigh",dust_safe_high:"dustSafeHigh",dust_warn_high:"dustWarnHigh",dust_danger_high:"dustDangerHigh"};
+ Object.entries(map).forEach(([k,id])=>next.thresholds[k]=Number($(id).value));
+ const t=next.thresholds;
+ if(!(t.temp_danger_low<t.temp_warn_low&&t.temp_warn_low<t.temp_safe_low&&t.temp_safe_low<t.temp_safe_high&&t.temp_safe_high<t.temp_warn_high&&t.temp_warn_high<t.temp_danger_high))return toast("Kiểm tra lại thứ tự ngưỡng nhiệt độ");
+ if(!(t.humi_danger_low<t.humi_warn_low&&t.humi_warn_low<t.humi_safe_low&&t.humi_safe_low<t.humi_safe_high&&t.humi_safe_high<t.humi_warn_high&&t.humi_warn_high<t.humi_danger_high))return toast("Kiểm tra lại thứ tự ngưỡng độ ẩm");
+ if(!(t.dust_safe_high<t.dust_warn_high&&t.dust_warn_high<t.dust_danger_high))return toast("Ngưỡng bụi phải tăng dần");
+ if(!next.fixed_times.length)return toast("Phải có ít nhất một mốc giờ");
+ if(!validTimeSpacing(next.fixed_times))return toast("Các mốc giờ phải cách nhau tối thiểu 10 phút");
+ config=next;
+ try{
+   await database.ref(CONFIG_PATH).update({
+     send_interval:1,
+     fixed_times:config.fixed_times,
+     delta:config.delta,
+     thresholds:config.thresholds,
+     buzzer:config.buzzer
+   });
+   await signalSync();
+   toast("Đã lưu cấu hình lên Firebase")
+ }catch(error){toast("Không lưu được cấu hình: "+error.message)}
+}
+function validTimeSpacing(ts){const mins=[...ts].sort().map(t=>{const[h,m]=t.split(":").map(Number);return h*60+m});for(let i=1;i<mins.length;i++)if(mins[i]-mins[i-1]<10)return false;if(mins.length>1&&1440-mins.at(-1)+mins[0]<10)return false;return true}
+async function signalSync(){await database.ref(COMMAND_PATH).set({pending:true,command:"SYNC_CONFIG",timestamp:firebase.database.ServerValue.TIMESTAMP})}
+async function toggleNotifications(){if(!("Notification"in window))return toast("Trình duyệt không hỗ trợ thông báo");const p=await Notification.requestPermission();const on=p==="granted";$("notificationToggle").checked=on;localStorage.setItem("enviroguard.notifications",String(on));if(on)await registerMessagingToken();toast(on?"Thông báo đã được bật":"Chưa được cấp quyền thông báo")}
+async function registerMessagingToken(){try{if(!firebase.messaging||!window.FCM_VAPID_KEY||window.FCM_VAPID_KEY.includes("PASTE"))return;const reg=await navigator.serviceWorker.ready,token=await firebase.messaging().getToken({vapidKey:window.FCM_VAPID_KEY,serviceWorkerRegistration:reg});if(token){const key=await sha256(token);await database.ref(`${ROOT}/notificationTokens/${key}`).set({token,enabled:true,environment:$("notifyEnvironment").checked,device:$("notifyDevice").checked,updatedAt:firebase.database.ServerValue.TIMESTAMP})}}catch(e){console.warn(e)}}
+function setToday(){$("alertDate").value=dateKey(Date.now())}
+function setConnection(ok,text){firebaseOnline=ok;$("connection").className=`status-pill ${ok?"online":"offline"}`;$("connection").textContent=text;$("firebaseStateText").textContent=ok?"Online":"Offline";$("sideFirebase").textContent=ok?"Online":"Offline"}
+function tableRow(r){return `<tr class="row-${r.status}"><td>${formatDateTime(r.time)}</td><td>${nodeName(r)}</td><td>${Number.isFinite(r.temp)?fmt(r.temp)+"°C":"--"}</td><td>${Number.isFinite(r.humid)?fmt(r.humid)+"%":"--"}</td><td>${Number.isFinite(r.dust)?fmt(r.dust):"--"}</td><td><span class="state ${r.status}">${label(r.status)}</span></td></tr>`}
+function exportCsv(){const rows=[["timestamp","node","nhiet_do","do_am","bui_min","status"],...filteredHistory().reverse().map(r=>[new Date(r.time).toISOString(),r.node,r.temp,r.humid,r.dust,r.status])],blob=new Blob(["\ufeff"+rows.map(r=>r.join(",")).join("\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`enviroguard-${dateKey(Date.now())}.csv`;a.click();URL.revokeObjectURL(a.href)}
+function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString("vi-VN");$("sideClock").textContent=d.toLocaleTimeString("vi-VN");$("sideDate").textContent=d.toLocaleDateString("vi-VN")}
+function registerSW(){if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js?v=8").catch(console.warn)}
+function nodeName(r){return nodeType(r)==="dust"?"Node bụi mịn":"Node nhiệt độ & độ ẩm"}function label(s){return s==="danger"?"Nguy hiểm":s==="warning"?"Cảnh báo":s==="offline"?"Mất kết nối":"An toàn"}
+function clone(value){return JSON.parse(JSON.stringify(value))}
+function combinedAverage(live,archived){
+ const sums={temp:0,humid:0,dust:0},counts={temp:0,humid:0,dust:0};
+ live.forEach(r=>{if(Number.isFinite(r.temp)){sums.temp+=r.temp;counts.temp++}if(Number.isFinite(r.humid)){sums.humid+=r.humid;counts.humid++}if(Number.isFinite(r.dust)){sums.dust+=r.dust;counts.dust++}});
+ archived.forEach(r=>{const n=Number(r.sampleCount||0);if(n>0&&Number.isFinite(Number(r.nhiet_do_avg))){sums.temp+=Number(r.nhiet_do_avg)*n;counts.temp+=n}if(n>0&&Number.isFinite(Number(r.do_am_avg))){sums.humid+=Number(r.do_am_avg)*n;counts.humid+=n}if(n>0&&Number.isFinite(Number(r.bui_min_avg))){sums.dust+=Number(r.bui_min_avg)*n;counts.dust+=n}});
+ if(!counts.temp&&!counts.humid&&!counts.dust)return null;
+ return {temp:counts.temp?sums.temp/counts.temp:NaN,humid:counts.humid?sums.humid/counts.humid:NaN,dust:counts.dust?sums.dust/counts.dust:NaN}
+}
+function average(a){if(!a.length)return null;const vals=k=>a.map(x=>x[k]).filter(Number.isFinite);const av=k=>{const x=vals(k);return x.length?x.reduce((s,v)=>s+v,0)/x.length:NaN};return{temp:av("temp"),humid:av("humid"),dust:av("dust")}}
+function startOfDay(t){const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()}function dateKey(t){const d=new Date(t),p=n=>String(n).padStart(2,"0");return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}function formatDateTime(t){return new Date(t).toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",second:"2-digit",day:"2-digit",month:"2-digit",year:"numeric"})}function formatTime(t){return new Date(t).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}function timeMs(v){let n=Number(v||0);if(n&&n<1e12)n*=1000;return n}function fmt(v){return Number(v).toFixed(1)}function num(v){if(v===null||v===undefined||v==="")return NaN;return Number(v)}function esc(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}function countdown(ms){const s=Math.max(0,Math.ceil(ms/1000)),m=Math.floor(s/60),r=s%60;return`${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}`}function formatDuration(s){s=Number(s);const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?`${d} ngày ${h} giờ`:h?`${h} giờ ${m} phút`:`${m} phút`}function mergeDeep(a,b){for(const[k,v]of Object.entries(b||{})){if(v&&typeof v==="object"&&!Array.isArray(v))a[k]=mergeDeep(a[k]&&typeof a[k]==="object"?a[k]:{},v);else a[k]=v}return a}function toast(m){$("toast").textContent=m;$("toast").classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>$("toast").classList.remove("show"),2800)}async function sha256(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("").slice(0,32)}
 })();

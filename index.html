@@ -1,444 +1,303 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Environmental Lab</title>
-
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="icon.svg">
-    <link rel="apple-touch-icon" href="icon.svg">
-    <meta name="theme-color" content="#f3e8cf">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- <meta name="apple-mobile-web-app-title" content="TerraPulse"> -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-
-    <link rel="stylesheet" href="style.css?v=real-final-4">
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1730">
+  <meta name="description" content="EnviroGuard Home - giám sát môi trường IoT cho gia đình, kho, nông nghiệp và khu y tế.">
+  <title>EnviroGuard Home</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css?v=fixed-1">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
-<body class="theme-terra page-home">
-    <div class="ambient" aria-hidden="true">
-        <div class="sun-orb"></div>
-        <div class="leaf-orb"></div>
-        <div class="coral-orb"></div>
-        <div class="noise-layer"></div>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">EG</div>
+      <div><strong>EnviroGuard Home</strong><small>Smart environment monitor</small></div>
     </div>
 
-    <div class="app-frame">
-        <aside class="rail">
-            <div class="brand">
-                <div class="brand-mark">TP</div>
-                <div>
-                    <span>Environmental Lab</span>
-                </div>
-            </div>
-
-            <nav class="rail-nav" aria-label="Main navigation">
-                <button type="button" class="nav-btn active" data-page="home"><span>⌂</span><b>Home</b></button>
-                <button type="button" class="nav-btn" data-page="lab"><span>◌</span><b>Insight Lab</b></button>
-                <button type="button" class="nav-btn" data-page="logs"><span>☷</span><b>Data Logs</b></button>
-                <button type="button" class="nav-btn" data-page="alerts"><span>!</span><b>Alerts</b><em
-                        id="sideAlertBadge">0</em></button>
-                <button type="button" class="nav-btn" data-page="guide"><span>↯</span><b>System Story</b></button>
-                <button type="button" class="nav-btn" data-page="settings"><span>⚙</span><b>Settings</b></button>
-            </nav>
-
-            <div class="rail-card">
-                <small>Firebase path</small>
-                <code>/IoT_Based_Environmental/history</code>
-            </div>
-        </aside>
-
-        <main class="surface">
-            <header class="topbar">
-                <div class="title-block">
-                    <span class="kicker">Realtime IoT Dashboard</span>
-                    <h1>Environmental Lab</h1>
-                    <p>Theo dõi nhiệt độ, độ ẩm và bụi mịn với giao diện rõ ràng, dễ đọc trên cả web và điện thoại.</p>
-                </div>
-
-                <div class="top-actions">
-                    <label class="search-box">
-                        <span>⌕</span>
-                        <input id="globalSearch" type="search" placeholder="Search logs...">
-                    </label>
-
-                    <select id="themeSelect" class="select-pill" aria-label="Theme selector">
-                        <option value="terra">Terra Cream</option>
-                        <option value="sakura">Sakura Mist</option>
-                        <option value="graphite">Graphite Lime</option>
-                        <option value="ocean">Ocean Night</option>
-                        <option value="lavender">Lavender Frost</option>
-                        <option value="mocha">Mocha Sand</option>
-                        <option value="forest">Forest Mint</option>
-                    </select>
-
-                    <button id="notifyBtn" type="button" class="notify-pill">🔔 Alerts</button>
-
-                    <div id="connectionPill" class="connection-pill checking">
-                        <i></i><strong id="connectionText">Checking Firebase</strong>
-                    </div>
-                </div>
-            </header>
-
-            <section class="page active" id="page-home" data-panel="home">
-                <section class="hero-layout">
-                    <article class="hero-card" id="heroCard">
-                        <div class="hero-ribbon">
-                            <span class="live-dot"><i></i> Live Firebase Feed</span>
-                            <span id="mainStatusChip" class="status-chip safe">SAFE</span>
-                        </div>
-
-                        <div class="hero-main">
-                            <div class="compass" id="statusCompass"><span id="statusIcon">✓</span></div>
-                            <div class="hero-copy">
-                                <small>Current Environment</small>
-                                <h2 id="mainStatus">Waiting for data</h2>
-                                <p id="mainNote">Đang chờ dữ liệu realtime từ Firebase.</p>
-                                <div class="hero-cta-line">
-                                    <span id="heroAlertCount" class="alert-counter safe">0 active triggers</span>
-                                    <span id="heroSeverityText" class="hero-severity-text">System stable</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="hero-insight-grid">
-                            <div class="hero-callout severity-panel">
-                                <span class="mini-kicker">Severity focus</span>
-                                <strong id="heroSeverityTitle">Awaiting readings</strong>
-                                <p id="heroSeverityNote">Waiting for temperature, humidity and dust readings.</p>
-                            </div>
-                            <div class="hero-callout reasons-panel">
-                                <span class="mini-kicker">What triggered this state</span>
-                                <ul id="heroReasonList" class="hero-reason-list">
-                                    <li class="safe">Waiting for incoming Firebase data...</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- <div class="quick-grid">
-                            <div><span>Local time</span><strong id="localClock">--</strong></div>
-                            <div><span>Last update</span><strong id="lastUpdate">--</strong></div>
-                            <div><span>Data age</span><strong id="dataAge">--</strong></div>
-                            <div><span>Records loaded</span><strong id="recordLoaded">0</strong></div>
-                        </div> -->
-                        <div class="quick-grid">
-                            <div>
-                                <span>Local time</span>
-                                <strong id="localClock">--</strong>
-                            </div>
-
-                            <div>
-                                <span>Database update</span>
-                                <strong id="lastUpdate">--</strong>
-                            </div>
-                        </div>
-                    </article>
-
-                    <!-- <article class="brief-card panel">
-                        <div class="panel-head tight">
-                            <div>
-                                <span>Smart Insight</span>
-                                <h2>Environment Brief</h2>
-                            </div>
-                            <button id="copyBriefBtn" type="button" class="ghost-btn">Copy</button>
-                        </div>
-                        <p id="briefText" class="brief-text">Chưa có đủ dữ liệu để phân tích.</p>
-                        <div id="recommendationList" class="recommendation-list">
-                            <div class="recommendation safe">✓ System is ready.</div>
-                        </div>
-                    </article> -->
-                </section>
-
-                <section class="sensor-strip">
-                    <article class="sensor-tile temp" id="tempTile">
-                        <div class="tile-top"><span>Temperature</span><b>°C</b></div>
-                        <div class="sensor-value"><strong id="tempValue">--</strong><em id="tempTrend">--</em></div>
-                        <div class="liquid-meter"><i id="tempBar"></i></div>
-                        <div class="tile-bottom"><span id="tempLevel">Waiting</span><small id="tempReason">--</small>
-                        </div>
-                    </article>
-
-                    <article class="sensor-tile humid" id="humidTile">
-                        <div class="tile-top"><span>Humidity</span><b>%</b></div>
-                        <div class="sensor-value"><strong id="humidValue">--</strong><em id="humidTrend">--</em></div>
-                        <div class="liquid-meter"><i id="humidBar"></i></div>
-                        <div class="tile-bottom"><span id="humidLevel">Waiting</span><small id="humidReason">--</small>
-                        </div>
-                    </article>
-
-                    <article class="sensor-tile dust" id="dustTile">
-                        <div class="tile-top"><span>Dust PM2.5</span><b>µg/m³</b></div>
-                        <div class="sensor-value"><strong id="dustValue">--</strong><em id="dustTrend">--</em></div>
-                        <div class="liquid-meter"><i id="dustBar"></i></div>
-                        <div class="tile-bottom"><span id="dustLevel">Waiting</span><small id="dustReason">--</small>
-                        </div>
-                    </article>
-                </section>
-
-                <section class="main-grid">
-                    <article class="panel chart-panel span-2">
-                        <div class="panel-head">
-                            <div>
-                                <span>Signal Bloom</span>
-                                <h2>Sensor Trend</h2>
-                                <p id="chartCaption">Latest records from Firebase.</p>
-                            </div>
-                            <div class="seg-control">
-                                <button type="button" class="seg active" data-chart-mode="latest">Latest</button>
-                                <button type="button" class="seg" data-chart-mode="daily">Daily avg</button>
-                                <button type="button" class="seg" data-chart-mode="selected">Selected day</button>
-                            </div>
-                        </div>
-                        <div class="chart-box"><canvas id="mainChart"></canvas></div>
-                    </article>
-
-                    <article class="panel summary-card">
-                        <div class="panel-head tight">
-                            <div>
-                                <span>Daily Capsule</span>
-                                <h2 id="summaryTitle">Today</h2>
-                            </div>
-                            <div class="date-row">
-                                <input id="datePicker" type="date">
-                                <button id="todayBtn" type="button">Today</button>
-                            </div>
-                        </div>
-                        <div class="summary-grid">
-                            <div><span>Temp avg</span><strong id="avgTemp">--</strong></div>
-                            <div><span>Humidity avg</span><strong id="avgHumid">--</strong></div>
-                            <div><span>Dust avg</span><strong id="avgDust">--</strong></div>
-                            <div><span>Temp high</span><strong id="maxTemp">--</strong></div>
-                            <div><span>Temp low</span><strong id="minTemp">--</strong></div>
-                            <div class="danger-box"><span>Danger</span><strong id="dangerCount">0</strong></div>
-                            <div class="warning-box"><span>Warning</span><strong id="warningCount">0</strong></div>
-                            <div><span>Records</span><strong id="dailyCount">0</strong></div>
-                        </div>
-                    </article>
-                </section>
-            </section>
-
-            <section class="page" id="page-lab" data-panel="lab">
-                <div class="page-title">
-                    <span>Insight Lab</span>
-                    <h2>Phân tích môi trường</h2>
-                    <p>So sánh trend, phân bố trạng thái và dữ liệu theo ngày.</p>
-                </div>
-                <section class="lab-grid">
-                    <article class="panel span-2">
-                        <div class="panel-head">
-                            <div>
-                                <span>Deep View</span>
-                                <h2>Analysis Chart</h2>
-                            </div>
-                            <div class="date-row">
-                                <select id="analysisMode">
-                                    <option value="latest">Latest records</option>
-                                    <option value="daily">Daily average</option>
-                                    <option value="selected">Selected date</option>
-                                </select>
-                                <input id="analysisDate" type="date">
-                            </div>
-                        </div>
-                        <div class="chart-box tall"><canvas id="analysisChart"></canvas></div>
-                    </article>
-                    <article class="panel">
-                        <div class="panel-head tight">
-                            <div><span>Risk Mix</span>
-                                <h2>Status Ratio</h2>
-                            </div>
-                        </div>
-                        <div class="donut-wrap"><canvas id="statusChart"></canvas></div>
-                        <div id="ratioLegend" class="ratio-legend"></div>
-                    </article>
-                    <article class="panel span-3 story-card">
-                        <div class="panel-head tight">
-                            <div><span>AI-like Observation</span>
-                                <h2>Pattern Notes</h2>
-                            </div>
-                        </div>
-                        <div id="patternNotes" class="pattern-notes"></div>
-                    </article>
-                </section>
-            </section>
-
-            <section class="page" id="page-logs" data-panel="logs">
-                <div class="page-title">
-                    <span>Data Logs</span>
-                    <h2>Lịch sử đo</h2>
-                    <p>Tìm kiếm, lọc trạng thái, sắp xếp và xuất dữ liệu.</p>
-                </div>
-                <article class="panel log-panel">
-                    <div class="log-tools">
-                        <input id="logSearch" type="search" placeholder="Search by status, note, value...">
-                        <select id="statusFilter">
-                            <option value="all">All status</option>
-                            <option value="safe">Safe</option>
-                            <option value="warning">Warning</option>
-                            <option value="danger">Danger</option>
-                        </select>
-                        <input id="logDate" type="date">
-                        <select id="sortMode">
-                            <option value="newest">Newest first</option>
-                            <option value="oldest">Oldest first</option>
-                            <option value="temp-high">Highest temp</option>
-                            <option value="dust-high">Highest dust</option>
-                        </select>
-                        <button id="resetLogBtn" type="button">Reset</button>
-                        <button id="exportCsvBtn" type="button">CSV</button>
-                        <button id="exportJsonBtn" type="button">JSON</button>
-                    </div>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Status</th>
-                                    <th>Temp</th>
-                                    <th>Humidity</th>
-                                    <th>Dust</th>
-                                    <th>Reason</th>
-                                </tr>
-                            </thead>
-                            <tbody id="logTableBody"></tbody>
-                        </table>
-                    </div>
-                    <div id="logCards" class="log-cards"></div>
-                    <div class="load-row"><button id="loadMoreBtn" type="button">Load more</button></div>
-                </article>
-            </section>
-
-            <section class="page" id="page-alerts" data-panel="alerts">
-                <div class="page-title split">
-                    <div>
-                        <span>Alerts</span>
-                        <h2>Cảnh báo Warning / Danger</h2>
-                        <p>Trang này chỉ hiển thị các cảnh báo mới nhất để dễ theo dõi.</p>
-                    </div>
-                    <button id="clearAlertsBtn" type="button" class="ghost-btn">Clear viewed</button>
-                </div>
-                <section class="alert-hero panel">
-                    <div>
-                        <span>Mobile Notification</span>
-                        <h2 id="notificationTitle">System notification is not enabled</h2>
-                        <p id="notificationText">Bấm Enable để web gửi thông báo khi Firebase có Warning hoặc Danger
-                            mới.</p>
-                    </div>
-                    <button id="notifyHeroBtn" type="button" class="big-notify">Enable warning/danger alerts</button>
-                </section>
-                <div id="alertList" class="alert-list"></div>
-                <div id="emptyAlerts" class="empty-state">
-                    <strong>✓</strong>
-                    <h3>No warning or danger alerts</h3>
-                    <p>Môi trường hiện chưa có cảnh báo cần chú ý.</p>
-                </div>
-            </section>
-
-            <section class="page" id="page-guide" data-panel="guide">
-                <div class="page-title">
-                    <span>System Story</span>
-                    <h2>Luồng hoạt động của project</h2>
-                    <p>Dùng phần này khi demo để người xem hiểu hệ thống trước khi nhìn số liệu.</p>
-                </div>
-                <section class="story-flow">
-                    <article class="flow-card"><b>1</b>
-                        <h3>Sensor Node</h3>
-                        <p>Đo nhiệt độ, độ ẩm và bụi mịn từ môi trường.</p>
-                    </article>
-                    <article class="flow-card"><b>2</b>
-                        <h3>LoRa E32</h3>
-                        <p>Truyền dữ liệu không dây từ node về gateway.</p>
-                    </article>
-                    <article class="flow-card"><b>3</b>
-                        <h3>ESP32 Gateway</h3>
-                        <p>Nhận dữ liệu, xử lý timestamp và gửi lên Internet.</p>
-                    </article>
-                    <article class="flow-card"><b>4</b>
-                        <h3>Firebase RTDB</h3>
-                        <p>Lưu lịch sử đo theo path cũ của project.</p>
-                    </article>
-                    <article class="flow-card"><b>5</b>
-                        <h3>Web Dashboard</h3>
-                        <p>Hiển thị chart, log, alert và notification.</p>
-                    </article>
-                </section>
-                <article class="panel explanation-card">
-                    <h2>Demo script ngắn</h2>
-                    <p>Dashboard này nhận dữ liệu realtime từ Firebase, tự đánh giá trạng thái Safe, Warning hoặc Danger
-                        dựa trên ngưỡng cấu hình. Khi dữ liệu mới đạt Warning hoặc Danger, hệ thống có thể gửi thông báo
-                        trên thiết bị đã cấp quyền notification.</p>
-                </article>
-            </section>
-
-            <section class="page" id="page-settings" data-panel="settings">
-                <div class="page-title">
-                    <span>Settings</span>
-                    <h2>Control Studio</h2>
-                    <p>Chỉnh ngưỡng cảnh báo, theme, số record tải về và test dữ liệu demo.</p>
-                </div>
-                <section class="settings-grid">
-                    <article class="panel">
-                        <div class="panel-head tight">
-                            <div><span>Thresholds</span>
-                                <h2>Alert Rules</h2>
-                            </div>
-                        </div>
-                        <form id="thresholdForm" class="threshold-form">
-                            <label>Temperature warning <input id="tempWarning" type="number" step="0.1"></label>
-                            <label>Temperature danger <input id="tempDanger" type="number" step="0.1"></label>
-                            <label>Humidity low warning <input id="humidLowWarning" type="number" step="0.1"></label>
-                            <label>Humidity high warning <input id="humidHighWarning" type="number" step="0.1"></label>
-                            <label>Humidity low danger <input id="humidLowDanger" type="number" step="0.1"></label>
-                            <label>Humidity high danger <input id="humidHighDanger" type="number" step="0.1"></label>
-                            <label>Dust warning <input id="dustWarning" type="number" step="0.1"></label>
-                            <label>Dust danger <input id="dustDanger" type="number" step="0.1"></label>
-                            <label>Record limit <input id="recordLimit" type="number" min="50" max="2000"></label>
-                            <div class="form-actions">
-                                <button type="submit">Save settings</button>
-                                <button id="resetSettingsBtn" type="button">Reset default</button>
-                            </div>
-                        </form>
-                    </article>
-                    <article class="panel">
-                        <div class="panel-head tight">
-                            <div><span>Demo Sandbox</span>
-                                <h2>Test UI without Firebase write</h2>
-                            </div>
-                        </div>
-                        <div class="sandbox-form">
-                            <label>Temperature <input id="simTemp" type="range" min="15" max="55" value="38"><output
-                                    id="simTempOut">38°C</output></label>
-                            <label>Humidity <input id="simHumid" type="range" min="10" max="100" value="82"><output
-                                    id="simHumidOut">82%</output></label>
-                            <label>Dust <input id="simDust" type="range" min="0" max="130" value="72"><output
-                                    id="simDustOut">72</output></label>
-                            <button id="simulateBtn" type="button" class="big-notify">Preview simulated record</button>
-                            <p class="hint">Chức năng này chỉ preview trên UI, không ghi dữ liệu vào Firebase.</p>
-                        </div>
-                    </article>
-                </section>
-            </section>
-        </main>
-    </div>
-
-    <nav class="mobile-nav" aria-label="Mobile navigation">
-        <button type="button" class="mobile-btn active" data-page="home"><span>⌂</span><small>Home</small></button>
-        <button type="button" class="mobile-btn" data-page="lab"><span>◌</span><small>Lab</small></button>
-        <button type="button" class="mobile-btn" data-page="logs"><span>☷</span><small>Logs</small></button>
-        <button type="button" class="mobile-btn" data-page="alerts"><span>!</span><small>Alerts</small><em
-                id="mobileAlertBadge">0</em></button>
-        <button type="button" class="mobile-btn" data-page="settings"><span>⚙</span><small>Set</small></button>
+    <nav class="nav-list">
+      <button class="nav-btn active" data-page="overview"><span>⌂</span>Tổng quan</button>
+      <button class="nav-btn" data-page="history"><span>▣</span>Lịch sử</button>
+      <button class="nav-btn" data-page="alerts"><span>!</span>Cảnh báo <em id="alertBadge">0</em></button>
+      <button class="nav-btn" data-page="buzzer"><span>♢</span>Chuông</button>
+      <button class="nav-btn" data-page="devices"><span>⌁</span>Thiết bị <em id="deviceBadge">0</em></button>
+      <button class="nav-btn" data-page="settings"><span>⚙</span>Cài đặt</button>
     </nav>
 
-    <div id="toast" class="toast"></div>
+    <div class="side-mini-grid">
+      <div><span>Firebase</span><strong id="sideFirebase">Đang kiểm tra</strong></div>
+      <div><span>Dữ liệu mới nhất</span><strong id="sideLatest">--:--:--</strong></div>
+    </div>
 
-    <script src="firebase-config.js?v=real-final-4"></script>
-    <script src="app.js?v=real-final-4"></script>
+    <div class="notify-card">
+      <div class="notify-title"><span>🔔</span><div><strong>Thông báo điện thoại</strong><small>Push cảnh báo và lỗi node</small></div></div>
+      <label class="switch-row"><span>Bật thông báo</span><input id="notificationToggle" type="checkbox"><i></i></label>
+      <div class="notify-options">
+        <label><input id="notifyEnvironment" type="checkbox" checked> Cảnh báo môi trường</label>
+        <label><input id="notifyDevice" type="checkbox" checked> Sensor node mất kết nối</label>
+      </div>
+      <button id="notificationPermission" class="btn light full">Kiểm tra quyền</button>
+    </div>
+
+    <div class="side-clock"><strong id="sideClock">--:--:--</strong><span id="sideDate">--/--/----</span></div>
+  </aside>
+
+  <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="mobile-line">
+        <button id="menuBtn" class="icon-btn" aria-label="Mở menu">☰</button>
+        <span class="realtime-dot"><i></i> Realtime</span>
+      </div>
+      <div class="top-status">
+        <span id="connection" class="status-pill waiting">Đang kết nối</span>
+        <span id="clock" class="status-pill">--:--:--</span>
+      </div>
+    </header>
+
+    <section id="overview" class="page active">
+      <div id="systemBanner" class="system-banner safe">
+        <div class="banner-icon"><span id="systemIcon">✓</span></div>
+        <div class="banner-copy">
+          <small>TRẠNG THÁI HIỆN TẠI</small>
+          <h1 id="systemState">Đang chờ dữ liệu</h1>
+          <p id="systemMessage">Dữ liệu sẽ tự động cập nhật từ Firebase.</p>
+        </div>
+        <div class="banner-pulse compact"><span></span></div>
+      </div>
+
+      <div class="metrics">
+        <article id="tempCard" class="metric safe">
+          <div class="metric-head"><span class="metric-icon temp">🌡</span><div><strong>Nhiệt độ</strong><small>Node nhiệt độ & độ ẩm</small></div><em>°C</em></div>
+          <div id="tempValue" class="metric-value">--</div><p id="tempState">Chưa có dữ liệu</p><div class="bar"><i id="tempBar"></i></div>
+        </article>
+        <article id="humidCard" class="metric safe">
+          <div class="metric-head"><span class="metric-icon humid">💧</span><div><strong>Độ ẩm</strong><small>Node nhiệt độ & độ ẩm</small></div><em>%</em></div>
+          <div id="humidValue" class="metric-value">--</div><p id="humidState">Chưa có dữ liệu</p><div class="bar"><i id="humidBar"></i></div>
+        </article>
+        <article id="dustCard" class="metric safe">
+          <div class="metric-head"><span class="metric-icon dust">◌</span><div><strong>Bụi mịn</strong><small>Node cảm biến bụi</small></div><em>µg/m³</em></div>
+          <div id="dustValue" class="metric-value">--</div><p id="dustState">Chưa có dữ liệu</p><div class="bar"><i id="dustBar"></i></div>
+        </article>
+      </div>
+
+      <div class="dashboard-grid">
+        <article class="panel chart-panel">
+          <div class="panel-head"><div><small>BIỂU ĐỒ REALTIME</small><h2>Xu hướng môi trường</h2></div>
+            <select id="chartCount"><option value="24">24 mẫu</option><option value="60">60 mẫu</option><option value="120">120 mẫu</option></select>
+          </div>
+          <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+        </article>
+
+        <article class="panel system-panel">
+          <div class="panel-head"><div><small>THÔNG TIN VẬN HÀNH</small><h2>Trạng thái hệ thống</h2></div><span class="live-chip"><i></i> LIVE</span></div>
+          <div class="health-summary">
+            <div class="health-score"><span id="healthScore">--</span><small>Sức khỏe</small></div>
+            <div><strong id="healthTitle">Đang kiểm tra</strong><p id="healthNote">Chờ dữ liệu từ 2 node.</p></div>
+          </div>
+          <div class="ops-grid">
+            <div><span>Dữ liệu mới nhất</span><strong id="latestDateTime">--</strong></div>
+            <div><span>Firebase</span><strong id="firebaseStateText">Đang kiểm tra</strong></div>
+            <div><span>Node hoạt động</span><strong id="nodeCountText">0/2</strong></div>
+            <div><span>Chuông</span><strong id="buzzerSummary">Sẵn sàng</strong></div>
+            <div><span>Cập nhật cảm biến</span><strong id="sendIntervalSummary">1 phút / lần</strong></div>
+            <div><span>Lịch thông báo</span><strong id="fixedTimesSummary">--</strong></div>
+          </div>
+        </article>
+      </div>
+
+      <article class="panel averages-panel">
+        <div class="panel-head"><div><small>THỐNG KÊ</small><h2>Giá trị trung bình</h2><p class="retention-note">Log chi tiết được giữ 7 ngày; dữ liệu cũ hơn chỉ lưu giá trị trung bình theo ngày.</p></div></div>
+        <div id="averageGrid" class="average-grid"></div>
+      </article>
+
+      <article class="panel overview-history">
+        <div class="panel-head"><div><small>DỮ LIỆU GẦN NHẤT</small><h2>Lịch sử mới nhất</h2></div><button class="btn light" data-go="history">Xem tất cả</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Thời gian</th><th>Node</th><th>Nhiệt độ</th><th>Độ ẩm</th><th>Bụi</th><th>Trạng thái</th></tr></thead><tbody id="overviewHistoryBody"></tbody></table></div>
+      </article>
+    </section>
+
+    <section id="history" class="page">
+      <div class="page-title"><div><small>DỮ LIỆU ĐO</small><h1>Lịch sử cảm biến</h1><p>Dữ liệu từ hai sensor node được hợp nhất theo thời gian.</p></div><button id="exportCsv" class="btn primary">Xuất CSV</button></div>
+      <article class="panel">
+        <div class="filter-row">
+          <label class="search-field"><span>⌕</span><input id="historySearch" type="search" placeholder="Tìm thời gian, node hoặc trạng thái..."></label>
+          <select id="historyNode"><option value="all">Tất cả node</option><option value="climate">Node nhiệt độ & độ ẩm</option><option value="dust">Node bụi</option></select>
+          <select id="historyStatus"><option value="all">Tất cả trạng thái</option><option value="safe">An toàn</option><option value="warning">Cảnh báo</option><option value="danger">Nguy hiểm</option></select>
+          <input id="historyDate" type="date">
+          <button id="clearHistoryFilters" class="btn light">Đặt lại</button>
+        </div>
+        <div id="historyList" class="record-list"></div>
+        <div class="table-footer"><span id="historyCount">0 bản ghi</span><button id="loadMoreHistory" class="btn light">Tải thêm</button></div>
+      </article>
+    </section>
+
+    <section id="alerts" class="page">
+      <div class="page-title"><div><small>NHẬT KÝ CẢNH BÁO</small><h1>Cảnh báo</h1><p>Cảnh báo môi trường và lỗi thiết bị được hiển thị rõ theo mức độ.</p></div><button id="deleteAlertsSelected" class="btn danger-outline">Xóa đã chọn</button></div>
+      <article class="panel">
+        <div class="alert-toolbar">
+          <select id="alertType"><option value="all">Tất cả loại</option><option value="environment">Môi trường</option><option value="device">Thiết bị</option></select>
+          <select id="alertStatus"><option value="all">Tất cả mức</option><option value="warning">Cảnh báo</option><option value="danger">Nguy hiểm</option></select>
+          <input id="alertDate" type="date"><button id="todayAlerts" class="btn light">Hôm nay</button>
+        </div>
+        <div id="alertList" class="alert-list"></div>
+        <div class="table-footer"><span id="alertCount">0 cảnh báo</span><button id="loadMoreAlerts" class="btn light">Tải thêm</button></div>
+      </article>
+    </section>
+
+    <section id="buzzer" class="page">
+      <div class="page-title"><div><small>ĐIỀU KHIỂN AN TOÀN</small><h1>Chuông cảnh báo</h1><p>Chỉ tắt tạm thời; chuông sẽ tự hoạt động lại khi hết thời gian.</p></div></div>
+      <div class="buzzer-grid">
+        <article class="panel buzzer-main">
+          <div class="buzzer-hero">
+            <div id="buzzerLamp" class="buzzer-icon">🔔</div>
+            <div><small>TRẠNG THÁI CHUÔNG</small><h2 id="buzzerText">Chuông đang chờ</h2><p id="buzzerNote">Chuông sẽ tự bật khi hệ thống yêu cầu.</p></div>
+          </div>
+          <div id="countdownWrap" class="countdown-card hidden"><span>Còn lại</span><strong id="muteCountdown">00:00</strong></div>
+          <div class="snooze-card">
+            <div><strong>Tắt chuông tạm thời</strong><p>Chọn mốc nhanh hoặc nhập thời gian tùy chỉnh từ 30 giây đến 60 phút.</p></div>
+            <div class="preset-row">
+              <button class="preset active" data-seconds="30">30 giây</button>
+              <button class="preset" data-seconds="300">5 phút</button>
+              <button class="preset" data-seconds="600">10 phút</button>
+              <button class="preset" data-seconds="1800">30 phút</button>
+              <button class="preset" data-seconds="3600">60 phút</button>
+            </div>
+            <div class="custom-time">
+              <label><span>Thời gian tùy chỉnh</span><input id="customSnoozeValue" type="number" min="30" max="3600" value="30"></label>
+              <select id="customSnoozeUnit"><option value="seconds">Giây</option><option value="minutes">Phút</option></select>
+            </div>
+            <button id="startSnooze" class="btn primary full">Tắt chuông tạm thời</button>
+            <button id="cancelSnooze" class="btn light full hidden">Bật lại ngay</button>
+          </div>
+        </article>
+
+        <article class="panel safety-card">
+          <div class="panel-head"><div><small>THIẾT LẬP AN TOÀN</small><h2>Chế độ tự động</h2></div></div>
+          <label class="setting-switch"><div><strong>Tự bật chuông khi nguy hiểm</strong><small>Áp dụng khi bất kỳ chỉ số nào ở mức đỏ.</small></div><input id="autoMode" type="checkbox"><i></i></label>
+          <label class="setting-switch"><div><strong>Không cho snooze khi nguy cấp</strong><small>Khóa thao tác tắt tạm thời tại mức nguy hiểm nghiêm trọng.</small></div><input id="lockDanger" type="checkbox"><i></i></label>
+          <label class="setting-switch"><div><strong>Tự bật lại nếu vẫn nguy hiểm</strong><small>Khi hết thời gian snooze, chuông kêu lại nếu trạng thái chưa an toàn.</small></div><input id="resumeIfDanger" type="checkbox"><i></i></label>
+          <div class="safety-tip">Gateway và node vẫn phải tự áp dụng ngưỡng cục bộ khi mất Internet.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="devices" class="page">
+      <div class="page-title"><div><small>DEVICE HEALTH</small><h1>Kiểm tra thiết bị</h1><p>Hệ thống có 2 sensor node độc lập: node nhiệt độ & độ ẩm và node bụi mịn.</p></div><button id="refreshDevices" class="btn primary">Kiểm tra lại</button></div>
+      <div class="device-summary-grid">
+        <article><span>Tổng sensor node</span><strong>2</strong><small>Được cấu hình</small></article>
+        <article><span>Hoạt động tốt</span><strong id="healthyNodes">0</strong><small>Đang gửi dữ liệu</small></article>
+        <article><span>Cần kiểm tra</span><strong id="problemNodes">2</strong><small>Chậm hoặc mất kết nối</small></article>
+      </div>
+      <div id="deviceGrid" class="device-grid"></div>
+      <article class="panel device-guide">
+        <div class="panel-head"><div><small>CÁCH ĐÁNH GIÁ</small><h2>Quy tắc kiểm tra tự động</h2></div></div>
+        <div class="guide-grid">
+          <div><b>Online</b><p>Có dữ liệu mới trong 3 phút gần nhất.</p></div>
+          <div><b>Cập nhật chậm</b><p>Đã hơn 3 phút chưa nhận dữ liệu mới.</p></div>
+          <div><b>Offline</b><p>Không nhận dữ liệu mới trong hơn 6 phút.</p></div>
+          <div><b>Có thể bị treo</b><p>Giá trị không đổi qua nhiều mẫu liên tiếp.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="settings" class="page">
+      <div class="page-title"><div><small>REMOTE CONFIG</small><h1>Cấu hình hệ thống</h1><p>Mọi thay đổi được lưu lên Firebase để Gateway đồng bộ xuống hai node.</p></div></div>
+      <form id="configForm">
+        <article class="panel settings-section general-card schedule-only-card">
+          <div class="section-title">
+            <span class="section-icon blue">◷</span>
+            <div>
+              <small>LỊCH THÔNG BÁO CỐ ĐỊNH</small>
+              <h2>Giờ gửi bản tin định kỳ</h2>
+              <p>Người dùng tự chọn các giờ muốn nhận bản tin. Cảnh báo vượt ngưỡng vẫn được gửi ngay lập tức, không chờ các mốc này.</p>
+            </div>
+          </div>
+          <div class="fixed-time-section schedule-only">
+            <div class="subhead">
+              <div>
+                <strong>Các mốc giờ đang sử dụng</strong>
+                <p>Có thể thêm, sửa hoặc xóa. Phải giữ ít nhất một mốc.</p>
+              </div>
+              <button id="addFixedTime" type="button" class="btn light">+ Thêm giờ</button>
+            </div>
+            <div id="fixedTimes" class="time-chip-list"></div>
+          </div>
+        </article>
+
+        <article class="panel settings-section delta-card">
+          <div class="section-title"><span class="section-icon violet">±</span><div><small>DELTA</small><h2>Ngưỡng thay đổi để gửi dữ liệu</h2><p>Nếu thay đổi nhỏ hơn delta và không đổi trạng thái, node có thể bỏ qua lần gửi.</p></div></div>
+          <div class="field-grid three">
+            <label><span>Nhiệt độ</span><div class="unit-input"><input id="deltaTemp" type="number" min="0.1" max="5" step="0.1"><em>±°C</em></div></label>
+            <label><span>Độ ẩm</span><div class="unit-input"><input id="deltaHumi" type="number" min="1" max="10" step="1"><em>±%</em></div></label>
+            <label><span>Bụi mịn</span><div class="unit-input"><input id="deltaDust" type="number" min="1" max="20" step="1"><em>±µg/m³</em></div></label>
+          </div>
+        </article>
+
+        <article class="panel settings-section threshold-card">
+          <div class="section-title"><span class="section-icon coral">🌡</span><div><small>5 VÙNG NHIỆT ĐỘ</small><h2>Ngưỡng nhiệt độ</h2><p>Giá trị phải tăng dần từ nguy hiểm thấp đến nguy hiểm cao.</p></div></div>
+          <div class="range-visual temp-range"><span>Nguy hiểm thấp</span><span>Cảnh báo thấp</span><span>An toàn</span><span>Cảnh báo cao</span><span>Nguy hiểm cao</span></div>
+          <div class="field-grid six">
+            <label><span>Nguy hiểm thấp</span><div class="unit-input"><input id="tempDangerLow" type="number" step="0.1"><em>°C</em></div></label>
+            <label><span>Cảnh báo thấp</span><div class="unit-input"><input id="tempWarnLow" type="number" step="0.1"><em>°C</em></div></label>
+            <label><span>An toàn thấp</span><div class="unit-input"><input id="tempSafeLow" type="number" step="0.1"><em>°C</em></div></label>
+            <label><span>An toàn cao</span><div class="unit-input"><input id="tempSafeHigh" type="number" step="0.1"><em>°C</em></div></label>
+            <label><span>Cảnh báo cao</span><div class="unit-input"><input id="tempWarnHigh" type="number" step="0.1"><em>°C</em></div></label>
+            <label><span>Nguy hiểm cao</span><div class="unit-input"><input id="tempDangerHigh" type="number" step="0.1"><em>°C</em></div></label>
+          </div>
+        </article>
+
+        <article class="panel settings-section threshold-card">
+          <div class="section-title"><span class="section-icon cyan">💧</span><div><small>5 VÙNG ĐỘ ẨM</small><h2>Ngưỡng độ ẩm</h2><p>Phân biệt khô nguy hiểm, cảnh báo, an toàn, ẩm cao và nguy hiểm cao.</p></div></div>
+          <div class="range-visual humi-range"><span>Nguy hiểm thấp</span><span>Cảnh báo thấp</span><span>An toàn</span><span>Cảnh báo cao</span><span>Nguy hiểm cao</span></div>
+          <div class="field-grid six">
+            <label><span>Nguy hiểm thấp</span><div class="unit-input"><input id="humiDangerLow" type="number" step="0.1"><em>%</em></div></label>
+            <label><span>Cảnh báo thấp</span><div class="unit-input"><input id="humiWarnLow" type="number" step="0.1"><em>%</em></div></label>
+            <label><span>An toàn thấp</span><div class="unit-input"><input id="humiSafeLow" type="number" step="0.1"><em>%</em></div></label>
+            <label><span>An toàn cao</span><div class="unit-input"><input id="humiSafeHigh" type="number" step="0.1"><em>%</em></div></label>
+            <label><span>Cảnh báo cao</span><div class="unit-input"><input id="humiWarnHigh" type="number" step="0.1"><em>%</em></div></label>
+            <label><span>Nguy hiểm cao</span><div class="unit-input"><input id="humiDangerHigh" type="number" step="0.1"><em>%</em></div></label>
+          </div>
+        </article>
+
+        <article class="panel settings-section threshold-card">
+          <div class="section-title"><span class="section-icon amber">◌</span><div><small>BỤI MỊN</small><h2>Ngưỡng bụi phía cao</h2><p>Bụi chỉ đánh giá theo chiều tăng.</p></div></div>
+          <div class="range-visual dust-range"><span>An toàn</span><span>Cảnh báo</span><span>Nguy hiểm</span></div>
+          <div class="field-grid three">
+            <label><span>An toàn tối đa</span><div class="unit-input"><input id="dustSafeHigh" type="number" min="0" step="0.1"><em>µg/m³</em></div></label>
+            <label><span>Cảnh báo từ</span><div class="unit-input"><input id="dustWarnHigh" type="number" min="0" step="0.1"><em>µg/m³</em></div></label>
+            <label><span>Nguy hiểm từ</span><div class="unit-input"><input id="dustDangerHigh" type="number" min="0" step="0.1"><em>µg/m³</em></div></label>
+          </div>
+        </article>
+
+        <div class="sticky-save">
+          <div><strong>Lưu cấu hình lên Firebase</strong><small>Gateway sẽ nhận lệnh SYNC_CONFIG ở Listen Window tiếp theo.</small></div>
+          <div><button id="resetConfig" type="button" class="btn light">Khôi phục mặc định</button><button class="btn primary" type="submit">Lưu thay đổi</button></div>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <button class="mobile-btn active" data-page="overview"><span>⌂</span><small>Tổng quan</small></button>
+  <button class="mobile-btn" data-page="history"><span>▣</span><small>Lịch sử</small></button>
+  <button class="mobile-btn" data-page="alerts"><span>!</span><small>Cảnh báo</small></button>
+  <button class="mobile-btn" data-page="buzzer"><span>♢</span><small>Chuông</small></button>
+  <button class="mobile-btn" data-page="devices"><span>⌁</span><small>Thiết bị</small></button>
+  <button class="mobile-btn" data-page="settings"><span>⚙</span><small>Cài đặt</small></button>
+</nav>
+<div id="toast" class="toast"></div>
+<script src="firebase-config.js?v=fixed-1"></script>
+<script src="app.js?v=fixed-1"></script>
 </body>
-
 </html>
