@@ -94,8 +94,26 @@ function renderBuzzer(){
  const until=Math.max(snoozeUntil,controlUntil);
  const active=(!!snooze.active||!!control.buzzerMuted)&&until>now;
  if((snooze.active||control.buzzerMuted)&&!active&&window.database){
-   database.ref(SNOOZE_PATH).update({active:false,duration:0});
-   database.ref(CONTROL_PATH).update({buzzerMuted:false,muteUntil:0,command:"cancel_mute"});
+   const expiredAt=Date.now();
+   database.ref(ROOT).update({
+     "snooze/active":false,
+     "snooze/start_time":0,
+     "snooze/duration":0,
+     "control/buzzerMuted":false,
+     "control/manualCommand":"auto",
+     "control/command":"mute_expired",
+     "control/muteUntil":0,
+     "control/muteSeconds":0,
+     "control/updatedAt":firebase.database.ServerValue.TIMESTAMP,
+     "commands/pending":true,
+     "commands/id":`web-${expiredAt}`,
+     "commands/command":"BUZZER_AUTO",
+     "commands/duration":0,
+     "commands/muteUntil":0,
+     "commands/source":"web",
+     "commands/acknowledged":false,
+     "commands/timestamp":firebase.database.ServerValue.TIMESTAMP
+   }).catch(error=>console.error("Không thể kết thúc snooze:",error));
  }
  $("countdownWrap").classList.toggle("hidden",!active);
  $("cancelSnooze").classList.toggle("hidden",!active);
@@ -108,60 +126,128 @@ function renderBuzzer(){
  $("lockDanger").checked=!!config.buzzer.lock_danger;
  $("resumeIfDanger").checked=config.buzzer.resume_if_danger!==false
 }
-async function startSnooze(){
- let value=Number($("customSnoozeValue").value||selectedSnooze);
- let seconds=$("customSnoozeUnit").value==="minutes"?value*60:value;
- if($$(".preset.active").length)seconds=selectedSnooze;
- if(seconds<30||seconds>3600)return toast("Thời gian phải từ 30 giây đến 60 phút");
- if(latest?.status==="danger"&&config.buzzer.lock_danger)return toast("Đang khóa tắt tạm thời vì hệ thống ở mức nguy hiểm");
- const now=Date.now(),until=now+seconds*1000;
- try{
-   await Promise.all([
-     database.ref(CONTROL_PATH).update({
-       buzzerMuted:true,
-       buzzerOn:false,
-       command:"mute",
-       manualCommand:"off",
-       muteMinutes:seconds/60,
-       muteUntil:until,
-       updatedAt:firebase.database.ServerValue.TIMESTAMP
-     }),
-     database.ref(SNOOZE_PATH).set({
-       active:true,
-       start_time:now,
-       duration:seconds,
-       level_before:latest?.status||"safe"
-     }),
-     database.ref(COMMAND_PATH).set({
-       pending:true,
-       command:"BUZZER_SNOOZE",
-       duration:seconds,
-       timestamp:firebase.database.ServerValue.TIMESTAMP
-     })
-   ]);
-   toast("Đã gửi lệnh tắt chuông tạm thời")
- }catch(error){toast("Không gửi được lệnh: "+error.message)}
+// async function startSnooze(){
+//  let value=Number($("customSnoozeValue").value||selectedSnooze);
+//  let seconds=$("customSnoozeUnit").value==="minutes"?value*60:value;
+//  if($$(".preset.active").length)seconds=selectedSnooze;
+//  if(seconds<30||seconds>3600)return toast("Thời gian phải từ 30 giây đến 60 phút");
+//  if(latest?.status==="danger"&&config.buzzer.lock_danger)return toast("Đang khóa tắt tạm thời vì hệ thống ở mức nguy hiểm");
+//  const now=Date.now(),until=now+seconds*1000;
+//  try{
+//    await Promise.all([
+//      database.ref(CONTROL_PATH).update({
+//        buzzerMuted:true,
+//        buzzerOn:false,
+//        command:"mute",
+//        manualCommand:"off",
+//        muteMinutes:seconds/60,
+//        muteUntil:until,
+//        updatedAt:firebase.database.ServerValue.TIMESTAMP
+//      }),
+//      database.ref(SNOOZE_PATH).set({
+//        active:true,
+//        start_time:now,
+//        duration:seconds,
+//        level_before:latest?.status||"safe"
+//      }),
+//      database.ref(COMMAND_PATH).set({
+//        pending:true,
+//        command:"BUZZER_SNOOZE",
+//        duration:seconds,
+//        timestamp:firebase.database.ServerValue.TIMESTAMP
+//      })
+//    ]);
+//    toast("Đã gửi lệnh tắt chuông tạm thời")
+//  }catch(error){toast("Không gửi được lệnh: "+error.message)}
+// }
+
+async function startSnooze() {
+    let value = Number(
+        $("customSnoozeValue").value || selectedSnooze
+    );
+
+    let seconds =
+        $("customSnoozeUnit").value === "minutes"
+            ? value * 60
+            : value;
+
+    if ($$(".preset.active").length) {
+        seconds = selectedSnooze;
+    }
+
+    if (seconds < 30 || seconds > 3600) {
+        return toast("Thời gian phải từ 30 giây đến 60 phút");
+    }
+
+    const now = Date.now();
+    const muteUntil = now + seconds * 1000;
+    const commandId = `web-${now}`;
+
+    try {
+        await database.ref(ROOT).update({
+            "control/buzzerMuted": true,
+            "control/buzzerOn": false,
+            "control/manualCommand": "off",
+            "control/command": "web_mute",
+            "control/muteUntil": muteUntil,
+            "control/muteSeconds": seconds,
+            "control/updatedAt":
+                firebase.database.ServerValue.TIMESTAMP,
+
+            "snooze/active": true,
+            "snooze/start_time": now,
+            "snooze/duration": seconds,
+            "snooze/level_before":
+                latest?.status || "safe",
+
+            "commands/pending": true,
+            "commands/id": commandId,
+            "commands/command": "BUZZER_OFF",
+            "commands/duration": seconds,
+            "commands/muteUntil": muteUntil,
+            "commands/source": "web",
+            "commands/acknowledged": false,
+            "commands/timestamp":
+                firebase.database.ServerValue.TIMESTAMP
+        });
+
+        toast("Đã gửi lệnh tắt chuông đến thiết bị");
+    } catch (error) {
+        console.error(error);
+        toast("Không gửi được lệnh: " + error.message);
+    }
 }
 async function cancelSnooze(){
+ const now=Date.now();
+ const commandId=`web-${now}`;
  try{
-   await Promise.all([
-     database.ref(CONTROL_PATH).update({
-       buzzerMuted:false,
-       buzzerOn:false,
-       command:"cancel_mute",
-       manualCommand:"on",
-       muteUntil:0,
-       updatedAt:firebase.database.ServerValue.TIMESTAMP
-     }),
-     database.ref(SNOOZE_PATH).update({active:false,duration:0}),
-     database.ref(COMMAND_PATH).set({
-       pending:true,
-       command:"BUZZER_RESUME",
-       timestamp:firebase.database.ServerValue.TIMESTAMP
-     })
-   ]);
-   toast("Đã hủy tắt chuông tạm thời")
- }catch(error){toast("Không gửi được lệnh: "+error.message)}
+   await database.ref(ROOT).update({
+     "control/buzzerMuted":false,
+     "control/buzzerOn":false,
+     "control/command":"web_resume_auto",
+     "control/manualCommand":"auto",
+     "control/muteUntil":0,
+     "control/muteSeconds":0,
+     "control/updatedAt":firebase.database.ServerValue.TIMESTAMP,
+
+     "snooze/active":false,
+     "snooze/start_time":0,
+     "snooze/duration":0,
+
+     "commands/pending":true,
+     "commands/id":commandId,
+     "commands/command":"BUZZER_AUTO",
+     "commands/duration":0,
+     "commands/muteUntil":0,
+     "commands/source":"web",
+     "commands/acknowledged":false,
+     "commands/timestamp":firebase.database.ServerValue.TIMESTAMP
+   });
+   toast("Chuông đã trở lại chế độ tự động")
+ }catch(error){
+   console.error(error);
+   toast("Không gửi được lệnh: "+error.message)
+ }
 }
 async function saveBuzzerSetting(k,v){config.buzzer[k]=v;await database.ref(`${CONFIG_PATH}/buzzer/${k}`).set(v);await signalSync();toast("Đã cập nhật thiết lập an toàn")}
 function fillConfig(){normalizeFixedTimes();$("deltaTemp").value=config.delta.temp;$("deltaHumi").value=config.delta.humi;$("deltaDust").value=config.delta.dust;const m={tempDangerLow:"temp_danger_low",tempWarnLow:"temp_warn_low",tempSafeLow:"temp_safe_low",tempSafeHigh:"temp_safe_high",tempWarnHigh:"temp_warn_high",tempDangerHigh:"temp_danger_high",humiDangerLow:"humi_danger_low",humiWarnLow:"humi_warn_low",humiSafeLow:"humi_safe_low",humiSafeHigh:"humi_safe_high",humiWarnHigh:"humi_warn_high",humiDangerHigh:"humi_danger_high",dustSafeHigh:"dust_safe_high",dustWarnHigh:"dust_warn_high",dustDangerHigh:"dust_danger_high"};Object.entries(m).forEach(([id,k])=>$(id).value=config.thresholds[k]);renderFixedTimes()}
