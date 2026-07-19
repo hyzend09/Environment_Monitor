@@ -109,7 +109,7 @@
             <div><span>Firebase</span><strong id="firebaseStateText">Đang kiểm tra</strong></div>
             <div><span>Node hoạt động</span><strong id="nodeCountText">0/2</strong></div>
             <div><span>Chuông</span><strong id="buzzerSummary">Sẵn sàng</strong></div>
-            <div><span>Cập nhật cảm biến</span><strong id="sendIntervalSummary">1 phút / lần</strong></div>
+            <div><span>Chu kỳ gửi dữ liệu</span><strong id="sendIntervalSummary">1 phút / lần</strong></div>
             <div><span>Lịch thông báo</span><strong id="fixedTimesSummary">--</strong></div>
           </div>
         </article>
@@ -221,6 +221,20 @@
               <h2>Giờ gửi bản tin định kỳ</h2>
               <p>Người dùng tự chọn các giờ muốn nhận bản tin. Cảnh báo vượt ngưỡng vẫn được gửi ngay lập tức, không chờ các mốc này.</p>
             </div>
+          </div>
+          <div class="field-grid three">
+            <label>
+              <span>Chu kỳ gửi dữ liệu</span>
+              <div class="custom-time">
+                <input id="sendIntervalValue" type="number" min="30" max="7200" step="1" required>
+                <select id="sendIntervalUnit">
+                  <option value="seconds">Giây</option>
+                  <option value="minutes">Phút</option>
+                  <option value="hours">Giờ</option>
+                </select>
+              </div>
+              <small>Tổng thời gian phải từ 30 giây đến 2 giờ. Node vẫn đo mỗi 8 giây; đây chỉ là chu kỳ gửi dữ liệu.</small>
+            </label>
           </div>
           <div class="fixed-time-section schedule-only">
             <div class="subhead">

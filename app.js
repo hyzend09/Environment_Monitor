@@ -2,7 +2,7 @@
 "use strict";
 const ROOT="/IoT_Based_Environmental";
 const HISTORY_PATH=`${ROOT}/history`, CONFIG_PATH=`${ROOT}/config`, CONTROL_PATH=`${ROOT}/control`, SNOOZE_PATH=`${ROOT}/snooze`, COMMAND_PATH=`${ROOT}/commands`, DEVICES_PATH=`${ROOT}/devices`, ALERTS_PATH=`${ROOT}/alerts`, DAILY_AVERAGES_PATH=`${ROOT}/dailyAverages`;
-const DEFAULT_CONFIG={send_interval:1,fixed_times:["08:00","12:00","18:00"],listen_window:3,heartbeat:15,delta:{temp:.5,humi:2,dust:5},thresholds:{temp_danger_low:0,temp_warn_low:10,temp_safe_low:18,temp_safe_high:35,temp_warn_high:38,temp_danger_high:45,humi_danger_low:15,humi_warn_low:20,humi_safe_low:30,humi_safe_high:65,humi_warn_high:80,humi_danger_high:90,dust_safe_high:45,dust_warn_high:80,dust_danger_high:150},buzzer:{mode:"snooze",snooze_duration:600,auto_mode:true,lock_danger:false,resume_if_danger:true}};
+const DEFAULT_CONFIG={send_interval:60,fixed_times:["08:00","12:00","18:00"],listen_window:3,heartbeat:15,delta:{temp:.5,humi:2,dust:5},thresholds:{temp_danger_low:0,temp_warn_low:10,temp_safe_low:18,temp_safe_high:35,temp_warn_high:38,temp_danger_high:45,humi_danger_low:15,humi_warn_low:20,humi_safe_low:30,humi_safe_high:65,humi_warn_high:80,humi_danger_high:90,dust_safe_high:45,dust_warn_high:80,dust_danger_high:150},buzzer:{mode:"snooze",snooze_duration:600,auto_mode:true,lock_danger:false,resume_if_danger:true}};
 const $=id=>document.getElementById(id), $$=sel=>[...document.querySelectorAll(sel)];
 let records=[],alerts=[],devices={},dailyAverages={},config=clone(DEFAULT_CONFIG),control={buzzerOn:false,buzzerMuted:false,muteUntil:0},snooze={active:false,start_time:0,duration:0},latest=null,chart=null,firebaseOnline=false,historyLimit=60,alertLimit=40,selectedSnooze=30;
 
@@ -23,6 +23,7 @@ function bindActions(){
  $("startSnooze").onclick=startSnooze;$("cancelSnooze").onclick=cancelSnooze;
  $("autoMode").onchange=e=>saveBuzzerSetting("auto_mode",e.target.checked);$("lockDanger").onchange=e=>saveBuzzerSetting("lock_danger",e.target.checked);$("resumeIfDanger").onchange=e=>saveBuzzerSetting("resume_if_danger",e.target.checked);
  $("refreshDevices").onclick=()=>{renderDevices();toast("Đã kiểm tra lại trạng thái hai node")};
+ $("sendIntervalUnit").onchange=updateSendIntervalLimits;
  $("addFixedTime").onclick=()=>addFixedTime("08:00");$("configForm").onsubmit=saveConfig;$("resetConfig").onclick=()=>{config=clone(DEFAULT_CONFIG);fillConfig();toast("Đã khôi phục cấu hình mặc định. Nhấn Lưu thay đổi để ghi lên Firebase.")};
  $("notificationToggle").onchange=toggleNotifications;$("notificationPermission").onclick=toggleNotifications;
  document.addEventListener("click",e=>{const d=e.target.closest("[data-alert-key]");if(d)deleteAlert(d.dataset.alertKey)});
@@ -52,7 +53,7 @@ function renderOverview(){
  setMetric("temp",latest.temp,metricStatus("temp",latest.temp),Math.max(4,Math.min(100,latest.temp/50*100)));setMetric("humid",latest.humid,metricStatus("humid",latest.humid),Math.max(4,Math.min(100,latest.humid)));setMetric("dust",latest.dust,metricStatus("dust",latest.dust),Math.max(4,Math.min(100,latest.dust/180*100)));
  $("latestDateTime").textContent=formatDateTime(latest.time);$("sideLatest").textContent=formatTime(latest.time);
  const states=getNodeStates(),healthy=states.filter(x=>x.level==="online").length;$("nodeCountText").textContent=`${healthy}/2`;$("healthScore").textContent=`${Math.round(healthy/2*100)}%`;$("healthTitle").textContent=healthy===2?"Hệ thống hoạt động tốt":healthy===1?"Một node cần kiểm tra":"Hai node cần kiểm tra";$("healthNote").textContent=states.map(s=>`${s.name}: ${s.label}`).join(" • ");
- $("sendIntervalSummary").textContent="1 phút / lần";$("fixedTimesSummary").textContent=(config.fixed_times||[]).join(", ")||"--";$("buzzerSummary").textContent=snooze.active?"Đang snooze":control.buzzerOn?"Đang kêu":"Sẵn sàng";
+ $("sendIntervalSummary").textContent=formatSendInterval(config.send_interval);$("fixedTimesSummary").textContent=(config.fixed_times||[]).join(", ")||"--";$("buzzerSummary").textContent=snooze.active?"Đang snooze":control.buzzerOn?"Đang kêu":"Sẵn sàng";
  renderAverages();$("overviewHistoryBody").innerHTML=records.slice(-8).reverse().map(tableRow).join("")||`<tr><td colspan="6">Chưa có dữ liệu.</td></tr>`;
 }
 function setMetric(id,v,status,pct){$(id+"Value").textContent=Number.isFinite(v)?fmt(v):"--";$(id+"Card").className=`metric ${status}`;$(id+"State").textContent=label(status);$(id+"Bar").style.width=pct+"%"}
@@ -250,7 +251,7 @@ async function cancelSnooze(){
  }
 }
 async function saveBuzzerSetting(k,v){config.buzzer[k]=v;await database.ref(`${CONFIG_PATH}/buzzer/${k}`).set(v);await signalSync();toast("Đã cập nhật thiết lập an toàn")}
-function fillConfig(){normalizeFixedTimes();$("deltaTemp").value=config.delta.temp;$("deltaHumi").value=config.delta.humi;$("deltaDust").value=config.delta.dust;const m={tempDangerLow:"temp_danger_low",tempWarnLow:"temp_warn_low",tempSafeLow:"temp_safe_low",tempSafeHigh:"temp_safe_high",tempWarnHigh:"temp_warn_high",tempDangerHigh:"temp_danger_high",humiDangerLow:"humi_danger_low",humiWarnLow:"humi_warn_low",humiSafeLow:"humi_safe_low",humiSafeHigh:"humi_safe_high",humiWarnHigh:"humi_warn_high",humiDangerHigh:"humi_danger_high",dustSafeHigh:"dust_safe_high",dustWarnHigh:"dust_warn_high",dustDangerHigh:"dust_danger_high"};Object.entries(m).forEach(([id,k])=>$(id).value=config.thresholds[k]);renderFixedTimes()}
+function fillConfig(){normalizeFixedTimes();fillSendIntervalInput(config.send_interval);$("deltaTemp").value=config.delta.temp;$("deltaHumi").value=config.delta.humi;$("deltaDust").value=config.delta.dust;const m={tempDangerLow:"temp_danger_low",tempWarnLow:"temp_warn_low",tempSafeLow:"temp_safe_low",tempSafeHigh:"temp_safe_high",tempWarnHigh:"temp_warn_high",tempDangerHigh:"temp_danger_high",humiDangerLow:"humi_danger_low",humiWarnLow:"humi_warn_low",humiSafeLow:"humi_safe_low",humiSafeHigh:"humi_safe_high",humiWarnHigh:"humi_warn_high",humiDangerHigh:"humi_danger_high",dustSafeHigh:"dust_safe_high",dustWarnHigh:"dust_warn_high",dustDangerHigh:"dust_danger_high"};Object.entries(m).forEach(([id,k])=>$(id).value=config.thresholds[k]);renderFixedTimes()}
 function normalizeFixedTimes(){let x=config.fixed_times;if(typeof x==="string")x=x.split(",");if(!Array.isArray(x)||!x.length)x=["08:00"];config.fixed_times=[...new Set(x.map(String).filter(t=>/^\d{2}:\d{2}$/.test(t)))].sort()}
 function renderFixedTimes(){$("fixedTimes").innerHTML=config.fixed_times.map((t,i)=>`<div class="time-chip"><input type="time" value="${t}" data-time-index="${i}"><button type="button" data-remove-time="${i}" title="Xóa">×</button></div>`).join("");$$("[data-time-index]").forEach(x=>x.onchange=e=>{config.fixed_times[Number(e.target.dataset.timeIndex)]=e.target.value;normalizeFixedTimes();renderFixedTimes()});$$("[data-remove-time]").forEach(x=>x.onclick=e=>{if(config.fixed_times.length<=1)return toast("Phải giữ ít nhất một mốc giờ");config.fixed_times.splice(Number(e.target.dataset.removeTime),1);renderFixedTimes()})}
 function addFixedTime(t){
@@ -266,7 +267,11 @@ function addFixedTime(t){
 async function saveConfig(e){
  e.preventDefault();
  const next=clone(config);
- next.send_interval=1;
+ const intervalValue=Number($("sendIntervalValue").value);
+ const intervalUnit=$("sendIntervalUnit").value;
+ const intervalMultiplier=intervalUnit==="hours"?3600:intervalUnit==="minutes"?60:1;
+ next.send_interval=Math.round(intervalValue*intervalMultiplier);
+ if(!Number.isFinite(next.send_interval)||next.send_interval<30||next.send_interval>7200)return toast("Chu kỳ gửi phải từ 30 giây đến 2 giờ");
  next.delta={temp:Number($("deltaTemp").value),humi:Number($("deltaHumi").value),dust:Number($("deltaDust").value)};
  const map={temp_danger_low:"tempDangerLow",temp_warn_low:"tempWarnLow",temp_safe_low:"tempSafeLow",temp_safe_high:"tempSafeHigh",temp_warn_high:"tempWarnHigh",temp_danger_high:"tempDangerHigh",humi_danger_low:"humiDangerLow",humi_warn_low:"humiWarnLow",humi_safe_low:"humiSafeLow",humi_safe_high:"humiSafeHigh",humi_warn_high:"humiWarnHigh",humi_danger_high:"humiDangerHigh",dust_safe_high:"dustSafeHigh",dust_warn_high:"dustWarnHigh",dust_danger_high:"dustDangerHigh"};
  Object.entries(map).forEach(([k,id])=>next.thresholds[k]=Number($(id).value));
@@ -279,15 +284,67 @@ async function saveConfig(e){
  config=next;
  try{
    await database.ref(CONFIG_PATH).update({
-     send_interval:1,
+     send_interval:config.send_interval,
      fixed_times:config.fixed_times,
      delta:config.delta,
      thresholds:config.thresholds,
-     buzzer:config.buzzer
+     buzzer:config.buzzer,
+     version:firebase.database.ServerValue.TIMESTAMP,
+     updatedAt:firebase.database.ServerValue.TIMESTAMP
    });
    await signalSync();
    toast("Đã lưu cấu hình lên Firebase")
  }catch(error){toast("Không lưu được cấu hình: "+error.message)}
+}
+function fillSendIntervalInput(value){
+ const seconds=normalizeSendInterval(value);
+ let unit="seconds",display=seconds;
+ if(seconds%3600===0){
+   unit="hours";
+   display=seconds/3600;
+ }else if(seconds%60===0){
+   unit="minutes";
+   display=seconds/60;
+ }
+ $("sendIntervalUnit").value=unit;
+ $("sendIntervalValue").value=display;
+ updateSendIntervalLimits();
+}
+function updateSendIntervalLimits(){
+ const unit=$("sendIntervalUnit").value;
+ const input=$("sendIntervalValue");
+ if(unit==="hours"){
+   input.min="0.0083333333";
+   input.max="2";
+   input.step="0.1";
+ }else if(unit==="minutes"){
+   input.min="0.5";
+   input.max="120";
+   input.step="0.5";
+ }else{
+   input.min="30";
+   input.max="7200";
+   input.step="1";
+ }
+}
+function normalizeSendInterval(value){
+ const n=Number(value);
+ if(!Number.isFinite(n))return 60;
+ return Math.min(7200,Math.max(30,Math.round(n)));
+}
+function formatSendInterval(value){
+ const seconds=normalizeSendInterval(value);
+ if(seconds%3600===0)return`${seconds/3600} giờ / lần`;
+ if(seconds%60===0)return`${seconds/60} phút / lần`;
+ if(seconds>3600){
+   const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=seconds%60;
+   return`${h} giờ${m?` ${m} phút`:""}${s?` ${s} giây`:""} / lần`;
+ }
+ if(seconds>60){
+   const m=Math.floor(seconds/60),s=seconds%60;
+   return`${m} phút${s?` ${s} giây`:""} / lần`;
+ }
+ return`${seconds} giây / lần`;
 }
 function validTimeSpacing(ts){const mins=[...ts].sort().map(t=>{const[h,m]=t.split(":").map(Number);return h*60+m});for(let i=1;i<mins.length;i++)if(mins[i]-mins[i-1]<10)return false;if(mins.length>1&&1440-mins.at(-1)+mins[0]<10)return false;return true}
 async function signalSync(){await database.ref(COMMAND_PATH).set({pending:true,command:"SYNC_CONFIG",timestamp:firebase.database.ServerValue.TIMESTAMP})}
